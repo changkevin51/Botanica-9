@@ -13,17 +13,22 @@ const key = {
 
     x: false,
     space: false,
-    ' ': false
+    ' ': false,
+    enter: false
 }
 
 function initializeInput() {
     addEventListener('keydown', e => {
         if (e.repeat) return
 
-        // Handle space key specially
+        // Handle special keys
         if (e.key === ' ') {
             key.space = true
             key[' '] = true
+        }
+        
+        if (e.key === 'Enter') {
+            key.enter = true
         }
         
         if (key[e.key.toLowerCase()] != undefined)
@@ -36,6 +41,10 @@ function initializeInput() {
         if (e.key === ' ') {
             key.space = false
             key[' '] = false
+        }
+        
+        if (e.key === 'Enter') {
+            key.enter = false
         }
         
         if (key[e.key.toLowerCase()] != undefined)
