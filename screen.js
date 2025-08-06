@@ -97,6 +97,23 @@ class Screen {
                 'POWER: '
                 + ~~hero.power + ' / ' + hero.max_power, 5, size * 2
             )
+            
+            // Show homing seed counter
+            const shotsUntilHoming = 5 - (hero.shot_count % 5)
+            const isHomingReady = (hero.shot_count % 5 === 4) // Next shot will be homing
+            const homingText = isHomingReady ? 'NEXT: HOMING SEED!' : 'HOMING IN: ' + shotsUntilHoming
+            ctx.fillStyle = isHomingReady ? '#0f0' : '#aaa'
+            ctx.fillText(homingText, 5, size * 3)
+            
+            // Show explosive seed counter
+            const shotsUntilExplosive = hero.shot_count >= 2 ? 5 - ((hero.shot_count - 2) % 5) : 2 - hero.shot_count
+            const isExplosiveReady = hero.shot_count >= 2 && (hero.shot_count - 2) % 5 === 4
+            const explosiveText = hero.shot_count < 2 ? 'EXPLOSIVE IN: ' + (2 - hero.shot_count) : 
+                                  isExplosiveReady ? 'NEXT: EXPLOSIVE!' : 'EXPLOSIVE IN: ' + shotsUntilExplosive
+            ctx.fillStyle = isExplosiveReady ? '#f80' : '#aaa'
+            ctx.fillText(explosiveText, 5, size * 4)
+            
+            ctx.fillStyle = '#fff' // Reset color
 
         // numbers
             this.numbers.forEach(item => {

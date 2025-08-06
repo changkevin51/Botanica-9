@@ -163,6 +163,7 @@ class Player extends Robot {
         this.recover_time = 0
         this.health = 5
         this.power = 0
+        this.shot_count = 0
 
         this.x = .35
         this.y = -10
@@ -173,60 +174,92 @@ class Player extends Robot {
     }
 
     throw() {
-        if (this.upgrade == 'seed') {
+        this.shot_count++
+        
+        // Every 5th shot is a special homing seed
+        if (this.shot_count % 5 === 0) {
             map.used_power.push(
-                new Seed({
+                new HomingSeed({
                     x: this.x + this.width / 2,
                     y: this.y + this.height / 2,
-                    width: .1,
-                    height: .1,
-                    speed_x: .1 * this.dir.face + random(-.01, .01, 0),
-                    speed_y: -.05,
-                    life_time: 100,
-
-                    plant: {
-                        color: [0],
-                        min_growth: 1,
-                        max_growth: 5,
-                        stem_limit_min: 5,
-                        stem_limit_max: 10,
-                    }
+                    width: .08,
+                    height: .08,
+                    speed_x: .08 * this.dir.face,
+                    speed_y: -.04,
+                    life_time: 300
                 })
             )
         }
-        if (this.upgrade == 'seed bomb') {
+        // Every 5th shot starting from 2nd shot (2, 7, 12, 17...) is explosive
+        else if ((this.shot_count - 2) % 5 === 0 && this.shot_count >= 2) {
             map.used_power.push(
-                new SeedBomb({
+                new ExplosiveSeed({
                     x: this.x + this.width / 2,
                     y: this.y + this.height / 2,
-                    width: .1,
-                    height: .1,
+                    width: .09,
+                    height: .09,
                     speed_x: .1 * this.dir.face + random(-.01, .01, 0),
                     speed_y: -.05,
-                    life_time: 200,
+                    life_time: 120
+                })
+            )
+        } else {
+            // Normal shots
+            if (this.upgrade == 'seed') {
+                map.used_power.push(
+                    new Seed({
+                        x: this.x + this.width / 2,
+                        y: this.y + this.height / 2,
+                        width: .1,
+                        height: .1,
+                        speed_x: .1 * this.dir.face + random(-.01, .01, 0),
+                        speed_y: -.05,
+                        life_time: 100,
 
-                    plant: {
-                        color: [0],
-                        min_growth: 1,
-                        max_growth: 5,
-                        stem_limit_min: 5,
-                        stem_limit_max: 10
-                    }
-                })
-            )
-        }
-        if (this.upgrade == 'cloner') {
-            map.used_power.push(
-                new Cloner({
-                    x: this.x + this.width / 2,
-                    y: this.y + this.height / 2,
-                    width: .1,
-                    height: .1,
-                    speed_x: .1 * this.dir.face + random(-.01, .01, 0),
-                    speed_y: -.05,
-                    life_time: 100
-                })
-            )
+                        plant: {
+                            color: [0],
+                            min_growth: 1,
+                            max_growth: 5,
+                            stem_limit_min: 5,
+                            stem_limit_max: 10,
+                        }
+                    })
+                )
+            }
+            else if (this.upgrade == 'seed bomb') {
+                map.used_power.push(
+                    new SeedBomb({
+                        x: this.x + this.width / 2,
+                        y: this.y + this.height / 2,
+                        width: .1,
+                        height: .1,
+                        speed_x: .1 * this.dir.face + random(-.01, .01, 0),
+                        speed_y: -.05,
+                        life_time: 200,
+
+                        plant: {
+                            color: [0],
+                            min_growth: 1,
+                            max_growth: 5,
+                            stem_limit_min: 5,
+                            stem_limit_max: 10
+                        }
+                    })
+                )
+            }
+            else if (this.upgrade == 'cloner') {
+                map.used_power.push(
+                    new Cloner({
+                        x: this.x + this.width / 2,
+                        y: this.y + this.height / 2,
+                        width: .1,
+                        height: .1,
+                        speed_x: .1 * this.dir.face + random(-.01, .01, 0),
+                        speed_y: -.05,
+                        life_time: 100
+                    })
+                )
+            }
         }
 
         this.power --
@@ -456,7 +489,29 @@ class Enemy extends Robot {
 
         map.used_power.forEach(item => {
             if (collide(this, item)) {
-                if (this.health > 0) this.health -= this.seed_health_loss
+                if (this.health > 0) {
+                    // Explosive seeds deal triple damage and knockback
+                    if (item.constructor.name === 'ExplosiveSeed') {
+                        this.health -= this.seed_health_loss * 3
+                        // Create explosion animation
+                        map.explosions.push(new Explosion(this.x + this.width/2, this.y + this.height/2))
+                        // Massive knockback effect - send them flying!
+                        const knockbackForce = 0.5  // Much stronger knockback
+                        const direction = item.speed_x > 0 ? 1 : -1
+                        this.speed_x = direction * knockbackForce
+                        this.speed_y = -knockbackForce * 1.2  // Strong upward knockback
+                        this.jump(0.25)  // Additional jump force
+                        this.in_air = true  // Ensure they're airborne
+                    }
+                    // Homing seeds deal double damage
+                    else if (item.constructor.name === 'HomingSeed') {
+                        this.health -= this.seed_health_loss * 2
+                        // Create hit effect
+                        item.createHitEffect(this.x + this.width/2, this.y + this.height/2)
+                    } else {
+                        this.health -= this.seed_health_loss
+                    }
+                }
 
                 cam.shake = 10
                 cam.shift = .005

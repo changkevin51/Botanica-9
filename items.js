@@ -1,4 +1,3 @@
-// Items: Junk and Upgrade-based classes (Seed, SeedBomb, Cloner)
 
 class Junk extends Base {
     constructor (x, y) {
@@ -472,5 +471,234 @@ class Cloner extends Upgrade {
         ctx.fillStyle = '#0f0'
         scaleRect(0, 0, 1, 1, this, .5, .5)
         ctx.restore()
+    }
+}
+
+class HomingSeed extends Upgrade {
+    constructor(d) {
+        super(d)
+        
+        this.homing_speed = 0.008  // More aggressive homing
+        this.target = null
+        this.hit_effect_timer = 0
+        this.hit_effect_active = false
+        
+        // Override the inherited speeds to make it slower initially
+        this.speed_x *= 0.3  // Make initial speed much slower
+        this.speed_y *= 0.3
+        this.max_speed = 0.08  // Higher max speed for better homing
+    }
+
+    findNearestEnemy() {
+        let nearest = null
+        let nearestDistance = Infinity
+        
+        map.enemies.forEach(enemy => {
+            if (enemy.health > 0) {
+                const dx = enemy.x + enemy.width/2 - (this.x + this.width/2)
+                const dy = enemy.y + enemy.height/2 - (this.y + this.height/2)
+                const distance = Math.sqrt(dx * dx + dy * dy)
+                
+                if (distance < nearestDistance) {
+                    nearest = enemy
+                    nearestDistance = distance
+                }
+            }
+        })
+        
+        // Also check clones (they don't have health property, so just check if they exist)
+        map.clones.forEach(clone => {
+            const dx = clone.x + clone.width/2 - (this.x + this.width/2)
+            const dy = clone.y + clone.height/2 - (this.y + this.height/2)
+            const distance = Math.sqrt(dx * dx + dy * dy)
+            
+            if (distance < nearestDistance) {
+                nearest = clone
+                nearestDistance = distance
+            }
+        })
+        
+        return nearest
+    }
+
+    createHitEffect(x, y) {
+        // Create white particles for hit effect
+        for (let i = 0; i < 8; i++) {
+            screen.numbers.push(new Number({
+                x: x,
+                y: y,
+                speed_x: random(-3, 3, 0),
+                speed_y: random(-3, 0, 0),
+                text: '•',
+                color: [255, 255, 255, 255],
+                fade_speed: 8
+            }))
+        }
+    }
+
+    update() {
+        // Don't call super.update() - we'll handle physics ourselves for better control
+        this.life_time --
+
+        if (this.life_time < 0) {
+            map.used_power.splice(map.used_power.indexOf(this), 1)
+            return
+        }
+
+        // Find target if we don't have one or if current target is dead
+        if (!this.target || (this.target.health !== undefined && this.target.health <= 0)) {
+            this.target = this.findNearestEnemy()
+        }
+
+        // Home towards target if we have one
+        if (this.target && (this.target.health === undefined || this.target.health > 0)) {
+            const dx = this.target.x + this.target.width/2 - (this.x + this.width/2)
+            const dy = this.target.y + this.target.height/2 - (this.y + this.height/2)
+            const distance = Math.sqrt(dx * dx + dy * dy)
+            
+            if (distance > 0) {
+                // More aggressive homing - adjust velocity toward target
+                this.speed_x += (dx / distance) * this.homing_speed
+                this.speed_y += (dy / distance) * this.homing_speed
+                
+                // Cap the speed so it doesn't get too fast
+                const currentSpeed = Math.sqrt(this.speed_x * this.speed_x + this.speed_y * this.speed_y)
+                if (currentSpeed > this.max_speed) {
+                    this.speed_x = (this.speed_x / currentSpeed) * this.max_speed
+                    this.speed_y = (this.speed_y / currentSpeed) * this.max_speed
+                }
+            }
+        }
+
+        // Apply much less gravity so it can curve upward toward targets
+        this.speed_y += gravity * 0.1
+
+        // Update position
+        this.x += this.speed_x
+        this.y += this.speed_y
+
+        // Apply minimal air resistance to maintain momentum
+        this.speed_x *= 0.995
+        this.speed_y *= 0.995
+
+        // Only remove if we're way out of bounds (no wall collision)
+        if (this.x < -5 || this.x > map.width + 5 || this.y > 20) {
+            map.used_power.splice(map.used_power.indexOf(this), 1)
+            return
+        }
+
+        this.draw()
+    }
+
+    draw() {
+        ctx.save()
+        translate(.5, .5, this)
+        rotate(this.speed_x * this.speed_y * 1e4)
+        ctx.fillStyle = '#fff'  // White color for homing seed
+        scaleRect(0, 0, 1, 1, this, .5, .5)
+        
+        // Add a slight glow effect
+        ctx.shadowColor = '#fff'
+        ctx.shadowBlur = 10
+        scaleRect(0, 0, 1, 1, this, .5, .5)
+        
+        ctx.restore()
+    }
+}
+
+class ExplosiveSeed extends Upgrade {
+    constructor(d) {
+        super(d)
+        
+        this.explosive = true
+    }
+
+    update() {
+        super.update()
+
+        if (this.life_time < 0) {
+            // Create explosion effect
+            map.explosions.push(new Explosion(this.x + this.width/2, this.y + this.height/2))
+            map.used_power.splice(map.used_power.indexOf(this), 1)
+        }
+
+        this.draw()
+    }
+
+    draw() {
+        ctx.save()
+        translate(.5, .5, this)
+        rotate(this.speed_x * this.speed_y * 1e4)
+        ctx.fillStyle = '#f80'  // Orange color for explosive seed
+        scaleRect(0, 0, 1, 1, this, .5, .5)
+        
+        // Add a pulsing glow effect
+        ctx.shadowColor = '#f80'
+        ctx.shadowBlur = 15
+        scaleRect(0, 0, 1, 1, this, .5, .5)
+        
+        ctx.restore()
+    }
+}
+
+class Explosion extends Base {
+    constructor(x, y) {
+        super()
+        
+        this.x = x - 0.5
+        this.y = y - 0.5
+        this.width = 1
+        this.height = 1
+        
+        this.frame = 0
+        this.frameSpeed = 3
+        this.frameCounter = 0
+        this.maxFrames = 6
+        
+        this.finished = false
+        
+        // Load explosion frames
+        this.frames = []
+        for (let i = 0; i < this.maxFrames; i++) {
+            const img = new Image()
+            img.src = `explosion/tile00${i}.png`
+            this.frames.push(img)
+        }
+    }
+    
+    update() {
+        if (this.finished) return
+        
+        this.frameCounter++
+        if (this.frameCounter >= this.frameSpeed) {
+            this.frameCounter = 0
+            this.frame++
+            
+            if (this.frame >= this.maxFrames) {
+                this.finished = true
+                // Remove from explosions array
+                const index = map.explosions.indexOf(this)
+                if (index > -1) {
+                    map.explosions.splice(index, 1)
+                }
+            }
+        }
+        
+        this.draw()
+    }
+    
+    draw() {
+        if (this.finished || this.frame >= this.maxFrames) return
+        
+        const currentFrame = this.frames[this.frame]
+        if (currentFrame && currentFrame.complete) {
+            ctx.drawImage(
+                currentFrame,
+                (this.x) * scale - cam.offset_x,
+                (this.y) * scale - cam.offset_y,
+                this.width * scale,
+                this.height * scale
+            )
+        }
     }
 }

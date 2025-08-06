@@ -19,6 +19,7 @@ class World {
         this.used_power = []
         this.plants = []
         this.plant_screen = []
+        this.explosions = []
 
         this.junk_timer_start = 3
         this.junk_timer = this.junk_timer_start
@@ -144,6 +145,10 @@ class World {
         })
 
         this.used_power.forEach(item => {
+            item.update()
+        })
+
+        this.explosions.forEach(item => {
             item.update()
         })
 
