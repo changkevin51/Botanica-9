@@ -13,7 +13,8 @@ const key = {
     x: false,
     space: false,
     ' ': false,
-    enter: false
+    enter: false,
+    shift: false
 }
 
 function initializeInput() {
@@ -30,10 +31,17 @@ function initializeInput() {
             key.enter = true
         }
         
+        if (e.key === 'Shift') {
+            key.shift = true
+        }
+        
         if (key[e.key.toLowerCase()] != undefined)
             key[e.key.toLowerCase()] = true
         
         if ((e.key == 'x' || e.key == ' ') && hero.health && ~~hero.power && gameState === 'playing') hero.throw()
+        
+        // Handle dash ability
+        if (e.key === 'Shift' && hero.health && gameState === 'playing') hero.dash()
     })
     
     addEventListener('keyup', e => {
@@ -44,6 +52,10 @@ function initializeInput() {
         
         if (e.key === 'Enter') {
             key.enter = false
+        }
+        
+        if (e.key === 'Shift') {
+            key.shift = false
         }
         
         if (key[e.key.toLowerCase()] != undefined)

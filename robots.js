@@ -167,6 +167,17 @@ class Player extends Robot {
         
         // Initialize ability tracking - each ability gets its own offset
         this.abilityCounters = {}
+        
+        // Skills tracking
+        this.jumpCount = 0  // Track number of jumps used (0 = can jump, 1 = used ground jump, 2 = used double jump)
+        this.dashCooldown = 0  // Dash cooldown timer
+        this.dashCooldownMax = 120  // 3 seconds at 60fps
+        this.dashTrail = []  // Array to store dash trail positions
+        this.prevJumpPressed = false  // Track previous frame jump key state for double jump
+        this.dashActive = false  // Whether player is currently dashing
+        this.dashDuration = 0  // How long the dash lasts
+        this.dashMaxDuration = 15  // Dash duration in frames
+        this.dashDirection = 0  // Direction of the dash
 
         this.x = .35
         this.y = -10
@@ -181,35 +192,29 @@ class Player extends Robot {
         
         const baseDamage = playerUpgrades.baseDamage * playerUpgrades.damageMultiplier
         
-        // Initialize ability counters for new abilities
         playerUpgrades.abilities.forEach((ability, index) => {
             if (!(ability in this.abilityCounters)) {
-                // Stagger each ability - first one starts at shot 5, second at shot 6, etc.
                 this.abilityCounters[ability] = 5 + index
             }
         })
         
-        // Check if any ability should fire on this shot
         let usedAbility = null
         let nextAbilityShot = Infinity
         let nextAbilityName = ''
         
         for (let ability of playerUpgrades.abilities) {
-            // Check if this ability should fire now
             if (this.shot_count === this.abilityCounters[ability]) {
                 usedAbility = ability
                 this.abilityCounters[ability] += 5 // Next shot for this ability is 5 shots later
                 break
             }
             
-            // Track which ability fires next and when
             if (this.abilityCounters[ability] > this.shot_count && this.abilityCounters[ability] < nextAbilityShot) {
                 nextAbilityShot = this.abilityCounters[ability]
                 nextAbilityName = ability
             }
         }
         
-        // Fire the appropriate projectile
         if (usedAbility === 'homing') {
             map.used_power.push(
                 new HomingSeed({
@@ -317,6 +322,22 @@ class Player extends Robot {
         this.power --
     }
 
+    dash() {
+        if (!playerUpgrades.skills.dash || this.dashCooldown > 0 || this.dashActive) return
+        
+        this.dashDirection = this.dir.face
+        if (this.dir.move !== 0) {
+            this.dashDirection = this.dir.move
+        }
+        
+        this.dashActive = true
+        this.dashDuration = this.dashMaxDuration
+        
+        this.dashCooldown = this.dashCooldownMax
+        cam.shake = 15
+        cam.shift = .008
+    }
+
     update() {
         super.update()
 
@@ -353,9 +374,62 @@ class Player extends Robot {
 
         this.collideGround()
 
-        if (key.arrowup || key.w || key.z)
-            if (!this.in_air || this.speed_y >= 0 && this.land_on_side)
-                this.jump(.12)
+        const jumpPressed = key.arrowup || key.w || key.z
+        const jumpJustPressed = jumpPressed && !this.prevJumpPressed
+        
+        if (jumpPressed && this.speed_y >= 0 && this.land_on_side) {
+            this.jump(.12)
+        }
+        else if (jumpJustPressed) {
+            if (playerUpgrades.skills.doubleJump) {
+                if (!this.in_air) {
+                    this.jump(.12)
+                    this.jumpCount = 1
+                } else if (this.jumpCount === 1) {
+                    this.jump(.12)
+                    this.jumpCount = 2
+                }
+            } else {
+                if (!this.in_air)
+                    this.jump(.12)
+            }
+        }
+        
+        if (!this.in_air) {
+            this.jumpCount = 0
+        }
+        
+        this.prevJumpPressed = jumpPressed
+        
+        if (this.dashCooldown > 0) {
+            this.dashCooldown--
+        }
+        
+        if (this.dashActive) {
+            this.dashDuration--
+            
+            const dashSpeed = 0.08
+            this.x += dashSpeed * this.dashDirection
+            
+            this.speed_y *= 0.5
+            
+            this.dashTrail.push({
+                x: this.x,
+                y: this.y,
+                life: 12,
+                alpha: 0.8
+            })
+            
+            if (this.dashDuration <= 0) {
+                this.dashActive = false
+            }
+        }
+        
+        this.dashTrail = this.dashTrail.filter(trail => {
+            trail.life--
+            trail.alpha = Math.max(0, trail.alpha - 0.08)
+            return trail.life > 0
+        })
         
         if (this.hit) {
             screen.numbers.push(new Number({
@@ -387,6 +461,19 @@ class Player extends Robot {
     }
 
     draw() {
+        this.dashTrail.forEach(trail => {
+            ctx.save()
+            ctx.globalAlpha = trail.alpha
+            ctx.fillStyle = '#88f'
+            stretchRect(0, 0, 1, 1, {
+                x: trail.x,
+                y: trail.y,
+                width: this.width * 0.8,
+                height: this.height * 0.8
+            })
+            ctx.restore()
+        })
+        
         const eye = '#221'
         const face = '#888'
         const arm = '#444'
@@ -538,25 +625,21 @@ class Enemy extends Robot {
         map.used_power.forEach(item => {
             if (collide(this, item)) {
                 if (this.health > 0) {
-                    // Use damage from the item if available, otherwise use default
                     const baseDamage = item.damage || this.seed_health_loss
                     
-                    // Explosive seeds deal extra damage and knockback
                     if (item.constructor.name === 'ExplosiveSeed') {
-                        this.health -= baseDamage * 1.5  // 50% more damage than base
+                        this.health -= baseDamage * 1.5 
                         // Create explosion animation
                         map.explosions.push(new Explosion(this.x + this.width/2, this.y + this.height/2))
                         const knockbackForce = 0.3 
                         const direction = item.speed_x > 0 ? 1 : -1
                         this.speed_x = direction * knockbackForce
                         this.speed_y = -knockbackForce * 1.2  // Strong upward knockback
-                        this.jump(0.25)  // Additional jump force
-                        this.in_air = true  // Ensure they're airborne
+                        this.jump(0.25)  
+                        this.in_air = true  
                     }
-                    // Homing seeds deal normal damage but have special effects
                     else if (item.constructor.name === 'HomingSeed') {
                         this.health -= baseDamage
-                        // Create hit effect
                         item.createHitEffect(this.x + this.width/2, this.y + this.height/2)
                     } else {
                         this.health -= baseDamage

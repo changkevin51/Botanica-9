@@ -15,7 +15,11 @@ let playerUpgrades = {
     baseDamage: 1,
     damageMultiplier: 1.0,
     abilities: [],
-    levelsCompleted: 0
+    levelsCompleted: 0,
+    skills: {
+        doubleJump: true,  // For now, make them available to everyone
+        dash: true
+    }
 }
 
 const titleImage = new Image()
@@ -237,6 +241,10 @@ function restart() {
     playerUpgrades.damageMultiplier = 1.0
     playerUpgrades.abilities = []
     playerUpgrades.levelsCompleted = 0
+    playerUpgrades.skills = {
+        doubleJump: true,
+        dash: true
+    }
 
     hero.reset()
     screen.set()
