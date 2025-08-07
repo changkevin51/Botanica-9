@@ -161,9 +161,12 @@ class Player extends Robot {
 
         this.hit = false
         this.recover_time = 0
-        this.health = 5
+        this.health = playerUpgrades.maxHealth
         this.power = 0
         this.shot_count = 0
+        
+        // Initialize ability tracking - each ability gets its own offset
+        this.abilityCounters = {}
 
         this.x = .35
         this.y = -10
@@ -176,8 +179,38 @@ class Player extends Robot {
     throw() {
         this.shot_count++
         
-        // Every 5th shot is a special homing seed
-        if (this.shot_count % 5 === 0) {
+        const baseDamage = playerUpgrades.baseDamage * playerUpgrades.damageMultiplier
+        
+        // Initialize ability counters for new abilities
+        playerUpgrades.abilities.forEach((ability, index) => {
+            if (!(ability in this.abilityCounters)) {
+                // Stagger each ability - first one starts at shot 5, second at shot 6, etc.
+                this.abilityCounters[ability] = 5 + index
+            }
+        })
+        
+        // Check if any ability should fire on this shot
+        let usedAbility = null
+        let nextAbilityShot = Infinity
+        let nextAbilityName = ''
+        
+        for (let ability of playerUpgrades.abilities) {
+            // Check if this ability should fire now
+            if (this.shot_count === this.abilityCounters[ability]) {
+                usedAbility = ability
+                this.abilityCounters[ability] += 5 // Next shot for this ability is 5 shots later
+                break
+            }
+            
+            // Track which ability fires next and when
+            if (this.abilityCounters[ability] > this.shot_count && this.abilityCounters[ability] < nextAbilityShot) {
+                nextAbilityShot = this.abilityCounters[ability]
+                nextAbilityName = ability
+            }
+        }
+        
+        // Fire the appropriate projectile
+        if (usedAbility === 'homing') {
             map.used_power.push(
                 new HomingSeed({
                     x: this.x + this.width / 2,
@@ -186,12 +219,11 @@ class Player extends Robot {
                     height: .08,
                     speed_x: .08 * this.dir.face,
                     speed_y: -.04,
-                    life_time: 300
+                    life_time: 300,
+                    damage: baseDamage
                 })
             )
-        }
-        // Every 5th shot starting from 2nd shot (2, 7, 12, 17...) is explosive
-        else if ((this.shot_count - 2) % 5 === 0 && this.shot_count >= 2) {
+        } else if (usedAbility === 'explosive') {
             map.used_power.push(
                 new ExplosiveSeed({
                     x: this.x + this.width / 2,
@@ -200,65 +232,85 @@ class Player extends Robot {
                     height: .09,
                     speed_x: .1 * this.dir.face + random(-.01, .01, 0),
                     speed_y: -.05,
-                    life_time: 120
+                    life_time: 120,
+                    damage: baseDamage * 1.5
+                })
+            )
+        } else if (usedAbility === 'seedbomb') {
+            map.used_power.push(
+                new SeedBomb({
+                    x: this.x + this.width / 2,
+                    y: this.y + this.height / 2,
+                    width: .1,
+                    height: .1,
+                    speed_x: .1 * this.dir.face + random(-.01, .01, 0),
+                    speed_y: -.05,
+                    life_time: 200,
+                    damage: baseDamage,
+                    plant: {
+                        color: [0],
+                        min_growth: 1,
+                        max_growth: 5,
+                        stem_limit_min: 5,
+                        stem_limit_max: 10
+                    }
+                })
+            )
+        } else if (usedAbility === 'cloner') {
+            map.used_power.push(
+                new Cloner({
+                    x: this.x + this.width / 2,
+                    y: this.y + this.height / 2,
+                    width: .1,
+                    height: .1,
+                    speed_x: .1 * this.dir.face + random(-.01, .01, 0),
+                    speed_y: -.05,
+                    life_time: 100,
+                    damage: baseDamage
                 })
             )
         } else {
-            // Normal shots
-            if (this.upgrade == 'seed') {
-                map.used_power.push(
-                    new Seed({
-                        x: this.x + this.width / 2,
-                        y: this.y + this.height / 2,
-                        width: .1,
-                        height: .1,
-                        speed_x: .1 * this.dir.face + random(-.01, .01, 0),
-                        speed_y: -.05,
-                        life_time: 100,
-
-                        plant: {
-                            color: [0],
-                            min_growth: 1,
-                            max_growth: 5,
-                            stem_limit_min: 5,
-                            stem_limit_max: 10,
-                        }
-                    })
-                )
-            }
-            else if (this.upgrade == 'seed bomb') {
-                map.used_power.push(
-                    new SeedBomb({
-                        x: this.x + this.width / 2,
-                        y: this.y + this.height / 2,
-                        width: .1,
-                        height: .1,
-                        speed_x: .1 * this.dir.face + random(-.01, .01, 0),
-                        speed_y: -.05,
-                        life_time: 200,
-
-                        plant: {
-                            color: [0],
-                            min_growth: 1,
-                            max_growth: 5,
-                            stem_limit_min: 5,
-                            stem_limit_max: 10
-                        }
-                    })
-                )
-            }
-            else if (this.upgrade == 'cloner') {
-                map.used_power.push(
-                    new Cloner({
-                        x: this.x + this.width / 2,
-                        y: this.y + this.height / 2,
-                        width: .1,
-                        height: .1,
-                        speed_x: .1 * this.dir.face + random(-.01, .01, 0),
-                        speed_y: -.05,
-                        life_time: 100
-                    })
-                )
+            // Normal shot (default seed type)
+            map.used_power.push(
+                new Seed({
+                    x: this.x + this.width / 2,
+                    y: this.y + this.height / 2,
+                    width: .1,
+                    height: .1,
+                    speed_x: .1 * this.dir.face + random(-.01, .01, 0),
+                    speed_y: -.05,
+                    life_time: 100,
+                    damage: baseDamage,
+                    plant: {
+                        color: [0],
+                        min_growth: 1,
+                        max_growth: 5,
+                        stem_limit_min: 5,
+                        stem_limit_max: 10,
+                    }
+                })
+            )
+        }
+        
+        // Show countdown to next ability if there are abilities and one is coming up
+        if (playerUpgrades.abilities.length > 0 && nextAbilityShot !== Infinity) {
+            const shotsUntilNext = nextAbilityShot - this.shot_count
+            if (shotsUntilNext > 0 && shotsUntilNext <= 4) { // Only show countdown for 1-4 shots away
+                let abilityDisplayName = ''
+                if (nextAbilityName === 'homing') abilityDisplayName = 'HOMING'
+                else if (nextAbilityName === 'explosive') abilityDisplayName = 'EXPLOSIVE'
+                else if (nextAbilityName === 'seedbomb') abilityDisplayName = 'SEED BOMB'
+                else if (nextAbilityName === 'cloner') abilityDisplayName = 'CLONER'
+                
+                screen.numbers.push(new Number({
+                    x: this.x + this.width / 2,
+                    y: this.y - 0.3,
+                    speed_x: 0,
+                    speed_y: -1,
+                    text: shotsUntilNext + ' to ' + abilityDisplayName,
+                    color: [255, 255, 255, 255],
+                    fade_speed: 3
+                }))
             }
         }
 
@@ -281,10 +333,6 @@ class Player extends Robot {
             this.dir.move = 1
             this.dir.face = 1
         }
-
-        /* if you're not pressing left orright
-        OR you're pressing both left and right,
-        stop moving the player */
 
         if ((
                 !key.arrowleft && // left
@@ -490,26 +538,28 @@ class Enemy extends Robot {
         map.used_power.forEach(item => {
             if (collide(this, item)) {
                 if (this.health > 0) {
-                    // Explosive seeds deal triple damage and knockback
+                    // Use damage from the item if available, otherwise use default
+                    const baseDamage = item.damage || this.seed_health_loss
+                    
+                    // Explosive seeds deal extra damage and knockback
                     if (item.constructor.name === 'ExplosiveSeed') {
-                        this.health -= this.seed_health_loss * 3
+                        this.health -= baseDamage * 1.5  // 50% more damage than base
                         // Create explosion animation
                         map.explosions.push(new Explosion(this.x + this.width/2, this.y + this.height/2))
-                        // Massive knockback effect - send them flying!
-                        const knockbackForce = 0.5  // Much stronger knockback
+                        const knockbackForce = 0.3 
                         const direction = item.speed_x > 0 ? 1 : -1
                         this.speed_x = direction * knockbackForce
                         this.speed_y = -knockbackForce * 1.2  // Strong upward knockback
                         this.jump(0.25)  // Additional jump force
                         this.in_air = true  // Ensure they're airborne
                     }
-                    // Homing seeds deal double damage
+                    // Homing seeds deal normal damage but have special effects
                     else if (item.constructor.name === 'HomingSeed') {
-                        this.health -= this.seed_health_loss * 2
+                        this.health -= baseDamage
                         // Create hit effect
                         item.createHitEffect(this.x + this.width/2, this.y + this.height/2)
                     } else {
-                        this.health -= this.seed_health_loss
+                        this.health -= baseDamage
                     }
                 }
 

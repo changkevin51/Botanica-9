@@ -9,7 +9,6 @@ const key = {
 
     z: false,
     q: false,
-    d: false,
 
     x: false,
     space: false,

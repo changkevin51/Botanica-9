@@ -1,3 +1,5 @@
+// IGNORE THIS FILE
+
 'use strict'
 class Camera {
     constructor(x, y) {
@@ -36,7 +38,7 @@ class World {
     constructor() {
         this.set()
 
-        this.level = 0
+        this.level = 8
         this.level_end = 10
         this.width = this.level_end
         this.change_level = false

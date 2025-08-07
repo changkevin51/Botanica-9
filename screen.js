@@ -1,5 +1,3 @@
-// Screen management and UI elements
-
 class Screen {
     constructor() {
         this.set()
@@ -73,56 +71,59 @@ class Screen {
 
         ctx.fillStyle = '#fff'
 
-        // health
-            let size = (cvs.width + cvs.height) / 50
-            if (size < 20) size = 20
-
-            ctx.textAlign = 'center'
-            ctx.font = size + 'px "Courier New", monospace'
-            let str = ''
-            for (let i = 0; i < hero.health; i ++) str += '♥'
-            ctx.fillText(str, cvs.width / 2, size + Math.sin(this.time))
-
-        // details
-            size = (cvs.width + cvs.height) / 80
-            if (size < 20) size = 20
-
-            ctx.textAlign = 'left'
-            ctx.font = size + 'px "Courier New", monospace'
-            ctx.fillText(
-                'UPGRADE: ' + hero.upgrade.toUpperCase() +
-                ' (SPACE TO THROW)', 5, size
-            )
-            ctx.fillText(
-                'POWER: '
-                + ~~hero.power + ' / ' + hero.max_power, 5, size * 2
-            )
-            
-            // Show homing seed counter
+        let size = (cvs.width + cvs.height) / 50
+        if (size < 20) size = 20
+        ctx.textAlign = 'center'
+        ctx.font = size + 'px "Courier New", monospace'
+        let str = ''
+        for (let i = 0; i < hero.health; i ++) str += '♥'
+        ctx.fillText(str, cvs.width / 2, size + Math.sin(this.time))
+        size = (cvs.width + cvs.height) / 80
+        if (size < 20) size = 20
+        ctx.textAlign = 'left'
+        ctx.font = size + 'px "Courier New", monospace'
+        ctx.fillText(
+            'UPGRADE: ' + hero.upgrade.toUpperCase() +
+            ' (SPACE TO THROW)', 5, size
+        )
+        ctx.fillText(
+            'POWER: '
+            + ~~hero.power + ' / ' + hero.max_power, 5, size * 2
+        )
+        ctx.fillText('DMG: ' + (playerUpgrades.baseDamage * playerUpgrades.damageMultiplier).toFixed(1) + 
+                    ' | MAX HP: ' + playerUpgrades.maxHealth, 5, size * 3)
+        let abilitiesText = 'ABILITIES: '
+        if (playerUpgrades.abilities.length === 0) {
+            abilitiesText += 'NONE'
+        } else {
+            abilitiesText += playerUpgrades.abilities.map(a => a.toUpperCase()).join(', ')
+        }
+        ctx.fillText(abilitiesText, 5, size * 4)
+        if (playerUpgrades.abilities.includes('homing')) {
             const shotsUntilHoming = 5 - (hero.shot_count % 5)
-            const isHomingReady = (hero.shot_count % 5 === 4) // Next shot will be homing
+            const isHomingReady = (hero.shot_count % 5 === 4)
             const homingText = isHomingReady ? 'NEXT: HOMING SEED!' : 'HOMING IN: ' + shotsUntilHoming
             ctx.fillStyle = isHomingReady ? '#0f0' : '#aaa'
-            ctx.fillText(homingText, 5, size * 3)
-            
-            // Show explosive seed counter
+            ctx.fillText(homingText, 5, size * 5)
+            ctx.fillStyle = '#fff'
+        }
+        if (playerUpgrades.abilities.includes('explosive')) {
+            const yPos = playerUpgrades.abilities.includes('homing') ? size * 6 : size * 5
             const shotsUntilExplosive = hero.shot_count >= 2 ? 5 - ((hero.shot_count - 2) % 5) : 2 - hero.shot_count
             const isExplosiveReady = hero.shot_count >= 2 && (hero.shot_count - 2) % 5 === 4
             const explosiveText = hero.shot_count < 2 ? 'EXPLOSIVE IN: ' + (2 - hero.shot_count) : 
                                   isExplosiveReady ? 'NEXT: EXPLOSIVE!' : 'EXPLOSIVE IN: ' + shotsUntilExplosive
             ctx.fillStyle = isExplosiveReady ? '#f80' : '#aaa'
-            ctx.fillText(explosiveText, 5, size * 4)
-            
-            // Show difficulty mode indicator
-            ctx.fillStyle = gameDifficulty === 'easy' ? '#0f0' : '#f00'
-            ctx.fillText('MODE: ' + gameDifficulty.toUpperCase(), 5, size * 5)
-            
-            ctx.fillStyle = '#fff' // Reset color
-
-        // numbers
-            this.numbers.forEach(item => {
-                item.update()
-            })
+            ctx.fillText(explosiveText, 5, yPos)
+            ctx.fillStyle = '#fff'
+        }
+        const diffYPos = size * (5 + playerUpgrades.abilities.length)
+        ctx.fillStyle = gameDifficulty === 'easy' ? '#0f0' : '#f00'
+        ctx.fillText('MODE: ' + gameDifficulty.toUpperCase(), 5, diffYPos)
+        ctx.fillStyle = '#fff'
+        this.numbers.forEach(item => {
+            item.update()
+        })
     }
 
     fadeOut() {
@@ -143,10 +144,10 @@ class Screen {
         ctx.font = size + 'px "Courier New", monospace'
         ctx.fillStyle = rgb(255, 255, 255, this.fade.a)
         ctx.textAlign = 'center'
-        if (map.level == map.level_end - 2)
-            ctx.fillText('FINAL LEVEl', cvs.width / 2, cvs.height / 2)
+        if (map.level == map.level_end - 1)
+            ctx.fillText('FINAL LEVEL', cvs.width / 2, cvs.height / 2)
         else
-            ctx.fillText('LEVEl ' + (map.level + 1), cvs.width / 2, cvs.height / 2)
+            ctx.fillText('LEVEL ' + (map.level + 1), cvs.width / 2, cvs.height / 2)
         cam.zoom += 1
 
         if (this.fade.a >= 255) return true
@@ -173,9 +174,9 @@ class Screen {
         ctx.textAlign = 'center'
 
         if (map.level == map.level_end - 1)
-            ctx.fillText('FINAL LEVEl', cvs.width / 2, cvs.height / 2)
+            ctx.fillText('FINAL LEVEL', cvs.width / 2, cvs.height / 2)
         else
-            ctx.fillText('LEVEl ' + map.level, cvs.width / 2, cvs.height / 2)
+            ctx.fillText('LEVEL ' + (map.level + 1), cvs.width / 2, cvs.height / 2)
 
         if (this.fade.a <= 0) {
             this.fade.a = 0
@@ -202,21 +203,16 @@ class Screen {
         ctx.textAlign = 'center'
         ctx.fillText('GAME OVER', cvs.width / 2, cvs.height / 2)
 
-        // Show difficulty-specific restart message
         const smallSize = size * 0.6
         ctx.font = smallSize + 'px "Courier New", monospace'
         const difficultyColor = gameDifficulty === 'easy' ? [0, 255, 0] : [255, 0, 0]
         ctx.fillStyle = rgb(difficultyColor[0], difficultyColor[1], difficultyColor[2], this.fade.a)
-        
         const restartMessage = gameDifficulty === 'easy' ? 
             'Respawning at level ' + map.level : 
             'Restarting from level 1'
         ctx.fillText(restartMessage, cvs.width / 2, cvs.height / 2 + size)
-
         if (this.fade.a >= 1000) {
-            // Handle different restart behaviors based on difficulty
             if (gameDifficulty === 'easy') {
-                // Easy mode: respawn at current level, just reset hero
                 hero.reset()
                 map.set()
                 map.generate()
@@ -226,7 +222,6 @@ class Screen {
                 screen.fade.a = 255
                 game = true
             } else {
-                // Hard mode: restart from beginning
                 restart()
             }
         }
@@ -248,7 +243,7 @@ class Screen {
         ctx.font = size + 'px "Courier New", monospace'
         ctx.fillStyle = rgb(0, 0, 0, this.fade.a)
         ctx.textAlign = 'center'
-        ctx.fillText('MISSION CLOMPLETE', cvs.width / 2, cvs.height / 2)
+        ctx.fillText('MISSION COMPLETE', cvs.width / 2, cvs.height / 2)
     }
 }
 

@@ -1,10 +1,8 @@
-// World class for game level management
-
 class World {
     constructor() {
         this.set()
 
-        this.level = 0
+        this.level = 0 
         this.level_end = 10
         this.width = this.level_end
         this.change_level = false
@@ -26,32 +24,56 @@ class World {
     }
 
     changeLevel() {
-        screen.fade.type = 'out'
-
-        const change = screen.fadeOut()
-
-        if (change) {
-            this.level ++
-
-            this.set()
-
-            this.width += 10
-            map.generate()
-            hero.reset()
-
-            screen.sun.g += 50
-
-            if (screen.sun.g > 255) screen.sun.b += 50
-
-            screen.sky.g += 20
-            screen.sky.b += 50
-
-            screen.mist.r -= 50
-            screen.mist.g -= 50
-            screen.mist.a -= 20
-
-            this.change_level = false
+        if (this.level >= this.level_end - 1) {
+            screen.fade.type = 'out'
+            const change = screen.fadeOut()
+            if (change) {
+                this.level ++
+                playerUpgrades.levelsCompleted = Math.max(playerUpgrades.levelsCompleted, this.level)
+                this.set()
+                this.width += 10
+                map.generate()
+                hero.reset()
+                this.applyLevelVisualEffects()
+                this.change_level = false
+            }
+        } else {
+            let shouldGetUpgrade = true
+            if (gameDifficulty === 'hard') {
+                shouldGetUpgrade = this.level + 1 > playerUpgrades.levelsCompleted
+            }
+            if (shouldGetUpgrade) {
+                this.level ++
+                playerUpgrades.levelsCompleted = Math.max(playerUpgrades.levelsCompleted, this.level)
+                gameState = 'upgrade'
+                upgradeSelection = 0
+                this.change_level = false
+                game = false
+            } else {
+                screen.fade.type = 'out'
+                const change = screen.fadeOut()
+                if (change) {
+                    this.level ++
+                    playerUpgrades.levelsCompleted = Math.max(playerUpgrades.levelsCompleted, this.level)
+                    this.set()
+                    this.width += 10
+                    map.generate()
+                    hero.reset()
+                    this.applyLevelVisualEffects()
+                    this.change_level = false
+                }
+            }
         }
+    }
+
+    applyLevelVisualEffects() {
+        screen.sun.g += 50
+        if (screen.sun.g > 255) screen.sun.b += 50
+        screen.sky.g += 20
+        screen.sky.b += 50
+        screen.mist.r -= 50
+        screen.mist.g -= 50
+        screen.mist.a -= 20
     }
 
     generate() {
@@ -158,15 +180,12 @@ class World {
             return ctx.fillStyle = rgb(20 / light + 30, 20 / light, 20 / light)
         }
 
-        // ground
         this.array.forEach((item, index) => {
             colorGround(hero.x - index - .5)
             stretchRect(
                 0, 0, 1.02, cvs.height, {x: index, y: -item, width: 1, height: 1}
             )
         })
-
-        // walls
         colorGround(hero.x)
         ctx.fillRect(
             -scale, 0, -cam.offset_x + scale, cvs.height,
@@ -182,9 +201,14 @@ class World {
         })
 
         if (this.change_level) this.changeLevel()
-        else screen.fade.type = 'in'
+        else if (gameState === 'playing') screen.fade.type = 'in'
 
         if (hero.health <= 0) screen.fade.type = 'over'
-        if (this.level >= this.level_end) screen.fade.type = 'win'
+        if (this.level >= this.level_end && gameState === 'playing' && !this.change_level) {
+            screen.fade.type = 'win'
+        }
+        if (gameState === 'upgrade' && game === false) {
+            game = false
+        }
     }
 }
