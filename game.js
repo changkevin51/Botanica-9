@@ -75,123 +75,62 @@ function drawPixelatedRobot(x, y, size, isHard = false, opacity = 1) {
         ctx.fillRect(x + px * pixelSize, y + py * pixelSize, pixelSize, pixelSize)
     }
     
-    // Head outline
-    for (let i = 3; i < 9; i++) {
-        drawPixel(i, 0, colors.main)
-        drawPixel(i, 1, colors.main)
-    }
-    drawPixel(2, 1, colors.main)
-    drawPixel(9, 1, colors.main)
-    drawPixel(1, 2, colors.main)
-    drawPixel(10, 2, colors.main)
-    
-    // Head fill with shading
-    for (let i = 2; i < 10; i++) {
-        for (let j = 2; j < 4; j++) {
-            drawPixel(i, j, colors.secondary)
+    // Head (main body color)
+    for (let i = 1; i < 13; i++) {
+        for (let j = 0; j < 4; j++) {
+            drawPixel(i, j, colors.main);
         }
     }
-    
-    // Face area
-    for (let i = 3; i < 9; i++) {
-        for (let j = 2; j < 4; j++) {
-            drawPixel(i, j, colors.face)
+
+    // Face/Screen area (lighter grey)
+    for (let i = 2; i < 12; i++) {
+        for (let j = 1; j < 3; j++) {
+            drawPixel(i, j, colors.face);
         }
     }
-    
-    // Eyes with glow effect
-    drawPixel(4, 2, colors.eyeGlow)
-    drawPixel(5, 2, colors.eye)
-    drawPixel(6, 2, colors.eye)
-    drawPixel(7, 2, colors.eyeGlow)
-    
-    // Antenna/horns for hard mode
-    if (isHard) {
-        drawPixel(3, 0, colors.accent)
-        drawPixel(8, 0, colors.accent)
-        drawPixel(2, 0, colors.accent)
-        drawPixel(9, 0, colors.accent)
+
+    // Eyes
+    for (let i = 4; i < 6; i++) {
+        for (let j = 1; j < 3; j++) {
+            drawPixel(i, j, colors.eye);
+        }
     }
-    
-    // Mouth/speaker grille
-    drawPixel(5, 3, colors.accent)
-    drawPixel(6, 3, colors.accent)
-    
+    // Right eye
+    for (let i = 8; i < 10; i++) {
+        for (let j = 1; j < 3; j++) {
+            drawPixel(i, j, colors.eye);
+        }
+    }
+
     // Neck
-    for (let i = 4; i < 8; i++) {
-        drawPixel(i, 4, colors.main)
-    }
-    
-    // Body outline
-    for (let i = 2; i < 10; i++) {
-        drawPixel(i, 5, colors.main)
-        drawPixel(i, 6, colors.main)
-        drawPixel(i, 9, colors.main)
-        drawPixel(i, 10, colors.main)
-    }
-    drawPixel(1, 6, colors.main)
-    drawPixel(10, 6, colors.main)
-    drawPixel(1, 7, colors.main)
-    drawPixel(10, 7, colors.main)
-    drawPixel(1, 8, colors.main)
-    drawPixel(10, 8, colors.main)
-    drawPixel(1, 9, colors.main)
-    drawPixel(10, 9, colors.main)
-    
-    // Body fill with shading
-    for (let i = 2; i < 10; i++) {
-        for (let j = 6; j < 9; j++) {
-            drawPixel(i, j, colors.secondary)
+    // This draws the 4x2 neck connecting the head and body.
+    for (let i = 6; i < 8; i++) {
+        for (let j = 4; j < 6; j++) {
+            drawPixel(i, j, colors.main);
         }
     }
-    
-    // Body highlights
-    for (let i = 3; i < 9; i++) {
-        for (let j = 6; j < 8; j++) {
-            drawPixel(i, j, colors.main)
+
+    // Body
+    // This creates the main 10x6 rectangular body.
+    for (let i = 2; i < 12; i++) {
+        for (let j = 6; j < 12; j++) {
+            drawPixel(i, j, colors.main);
         }
     }
-    
-    // Chest panel
-    for (let i = 4; i < 8; i++) {
-        drawPixel(i, 7, colors.accent)
-    }
-    drawPixel(5, 6, colors.accent)
-    drawPixel(6, 6, colors.accent)
-    
+
     // Arms
-    drawPixel(0, 7, colors.arm)
-    drawPixel(1, 7, colors.arm)
-    drawPixel(11, 7, colors.arm)
-    drawPixel(10, 7, colors.arm)
-    
-    // Legs
-    drawPixel(3, 11, colors.main)
-    drawPixel(4, 11, colors.main)
-    drawPixel(7, 11, colors.main)
-    drawPixel(8, 11, colors.main)
-    
-    // Feet
-    drawPixel(2, 11, colors.shadow)
-    drawPixel(3, 11, colors.main)
-    drawPixel(4, 11, colors.main)
-    drawPixel(5, 11, colors.shadow)
-    drawPixel(6, 11, colors.shadow)
-    drawPixel(7, 11, colors.main)
-    drawPixel(8, 11, colors.main)
-    drawPixel(9, 11, colors.shadow)
-    
-    // Additional details for hard mode
-    if (isHard) {
-        // Shoulder spikes
-        drawPixel(1, 5, colors.accent)
-        drawPixel(10, 5, colors.accent)
-        // Glowing chest core
-        drawPixel(5, 7, colors.eyeGlow)
-        drawPixel(6, 7, colors.eyeGlow)
-        // Extra armor plating
-        drawPixel(3, 8, colors.accent)
-        drawPixel(8, 8, colors.accent)
+    // These loops draw the two 2x2 darker grey arms.
+    // Left arm
+    for (let i = 0; i < 2; i++) {
+        for (let j = 7; j < 9; j++) {
+            drawPixel(i, j, colors.arm);
+        }
+    }
+    // Right arm
+    for (let i = 12; i < 14; i++) {
+        for (let j = 7; j < 9; j++) {
+            drawPixel(i, j, colors.arm);
+        }
     }
     
     ctx.restore()
