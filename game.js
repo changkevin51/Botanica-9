@@ -17,8 +17,8 @@ let playerUpgrades = {
     abilities: [],
     levelsCompleted: 0,
     skills: {
-        doubleJump: false,  // Unlocked after level 2
-        dash: false         // Unlocked after level 4
+        doubleJump: false,  // unlocked after level 2
+        dash: false         // unlocked after level 4
     }
 }
 
@@ -142,7 +142,7 @@ function applyUpgrade(upgradeType) {
             playerUpgrades.damageMultiplier += 0.25
             break
         case 2:
-            const availableAbilities = ['explosive']
+            const availableAbilities = ['homing', 'explosive', 'seedbomb', 'cloner']
             const unownedAbilities = availableAbilities.filter(ability => !playerUpgrades.abilities.includes(ability))
             
             if (unownedAbilities.length > 0) {
