@@ -192,9 +192,14 @@ class Player extends Robot {
         
         const baseDamage = playerUpgrades.baseDamage * playerUpgrades.damageMultiplier
         
+        // Initialize ability counters with evenly spaced distribution
         playerUpgrades.abilities.forEach((ability, index) => {
             if (!(ability in this.abilityCounters)) {
-                this.abilityCounters[ability] = 5 + index
+                // Distribute abilities evenly: if we have n abilities, space them 5/n shots apart
+                const numAbilities = playerUpgrades.abilities.length
+                const spacing = Math.max(1, Math.floor(5 / numAbilities))
+                const offset = Math.floor(5 * (index + 1) / (numAbilities + 1))
+                this.abilityCounters[ability] = offset
             }
         })
         
@@ -202,13 +207,17 @@ class Player extends Robot {
         let nextAbilityShot = Infinity
         let nextAbilityName = ''
         
+        // First, check if any ability should be used this shot
         for (let ability of playerUpgrades.abilities) {
             if (this.shot_count === this.abilityCounters[ability]) {
                 usedAbility = ability
                 this.abilityCounters[ability] += 5 // Next shot for this ability is 5 shots later
                 break
             }
-            
+        }
+        
+        // Then, find the next closest ability (after potentially updating counters)
+        for (let ability of playerUpgrades.abilities) {
             if (this.abilityCounters[ability] > this.shot_count && this.abilityCounters[ability] < nextAbilityShot) {
                 nextAbilityShot = this.abilityCounters[ability]
                 nextAbilityName = ability
@@ -307,12 +316,14 @@ class Player extends Robot {
                 else if (nextAbilityName === 'seedbomb') abilityDisplayName = 'SEED BOMB'
                 else if (nextAbilityName === 'cloner') abilityDisplayName = 'CLONER'
                 
+                const displayText = shotsUntilNext === 1 ? `Next: ${abilityDisplayName}` : `${shotsUntilNext} to ${abilityDisplayName}`
+                
                 screen.numbers.push(new Number({
                     x: this.x + this.width / 2,
                     y: this.y - 0.3,
                     speed_x: 0,
                     speed_y: -1,
-                    text: shotsUntilNext + ' to ' + abilityDisplayName,
+                    text: displayText,
                     color: [255, 255, 255, 255],
                     fade_speed: 3
                 }))
@@ -320,6 +331,42 @@ class Player extends Robot {
         }
 
         this.power --
+    }
+
+    getNextAbilityInfo() {
+        if (playerUpgrades.abilities.length === 0) return null
+        playerUpgrades.abilities.forEach((ability, index) => {
+            if (!(ability in this.abilityCounters)) {
+                const numAbilities = playerUpgrades.abilities.length
+                const spacing = Math.max(1, Math.floor(5 / numAbilities))
+                const offset = Math.floor(5 * (index + 1) / (numAbilities + 1))
+                this.abilityCounters[ability] = offset
+            }
+        })
+        
+        let nextAbilityShot = Infinity
+        let nextAbilityName = ''
+        
+        for (let ability of playerUpgrades.abilities) {
+            if (this.abilityCounters[ability] > this.shot_count && this.abilityCounters[ability] < nextAbilityShot) {
+                nextAbilityShot = this.abilityCounters[ability]
+                nextAbilityName = ability
+            }
+        }
+        
+        if (nextAbilityShot === Infinity) return null
+        
+        const shotsUntilNext = nextAbilityShot - this.shot_count
+        let abilityDisplayName = ''
+        if (nextAbilityName === 'homing') abilityDisplayName = 'HOMING'
+        else if (nextAbilityName === 'explosive') abilityDisplayName = 'EXPLOSIVE'
+        else if (nextAbilityName === 'seedbomb') abilityDisplayName = 'SEED BOMB'
+        else if (nextAbilityName === 'cloner') abilityDisplayName = 'CLONER'
+        
+        return {
+            shotsUntilNext: shotsUntilNext,
+            abilityName: abilityDisplayName
+        }
     }
 
     dash() {

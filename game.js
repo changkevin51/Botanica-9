@@ -17,8 +17,8 @@ let playerUpgrades = {
     abilities: [],
     levelsCompleted: 0,
     skills: {
-        doubleJump: true,  // For now, make them available to everyone
-        dash: true
+        doubleJump: false,  // Unlocked after level 2
+        dash: false         // Unlocked after level 4
     }
 }
 
@@ -30,7 +30,6 @@ const map = new World()
 const hero = new Player(.25, .3)
 const screen = new Screen()
 
-// Initialize upgrade system
 playerUpgrades.maxHealth = 3
 playerUpgrades.baseDamage = 1
 playerUpgrades.damageMultiplier = 1.0
@@ -43,59 +42,158 @@ function resize() {
 }
 
 function drawPixelatedRobot(x, y, size, isHard = false, opacity = 1) {
-    const pixelSize = size / 8
+    const pixelSize = size / 12 
     
     ctx.save()
     ctx.globalAlpha = opacity
     
     ctx.imageSmoothingEnabled = false
     const colors = isHard ? {
-        main: '#800',
-        face: '#a66',
-        eye: '#f00',
-        arm: '#400',
-        accent: '#f80'
+        main: '#a00',
+        secondary: '#600',
+        face: '#c88',
+        eye: '#ff0',
+        eyeGlow: '#ff6',
+        arm: '#600',
+        accent: '#f80',
+        highlight: '#d44',
+        shadow: '#400'
     } : {
-        main: '#666',
-        face: '#888',
-        eye: '#221',
-        arm: '#444',
-        accent: '#0a0'
+        main: '#888',
+        secondary: '#555',
+        face: '#aaa',
+        eye: '#4af',
+        eyeGlow: '#8cf',
+        arm: '#666',
+        accent: '#0c0',
+        highlight: '#aaa',
+        shadow: '#333'
     }
     
     function drawPixel(px, py, color) {
         ctx.fillStyle = color
         ctx.fillRect(x + px * pixelSize, y + py * pixelSize, pixelSize, pixelSize)
     }
-    for (let i = 2; i < 6; i++) {
-        for (let j = 0; j < 3; j++) {
-            drawPixel(i, j, colors.main)
+    
+    // Head outline
+    for (let i = 3; i < 9; i++) {
+        drawPixel(i, 0, colors.main)
+        drawPixel(i, 1, colors.main)
+    }
+    drawPixel(2, 1, colors.main)
+    drawPixel(9, 1, colors.main)
+    drawPixel(1, 2, colors.main)
+    drawPixel(10, 2, colors.main)
+    
+    // Head fill with shading
+    for (let i = 2; i < 10; i++) {
+        for (let j = 2; j < 4; j++) {
+            drawPixel(i, j, colors.secondary)
         }
     }
-    for (let i = 3; i < 5; i++) {
-        for (let j = 1; j < 3; j++) {
+    
+    // Face area
+    for (let i = 3; i < 9; i++) {
+        for (let j = 2; j < 4; j++) {
             drawPixel(i, j, colors.face)
         }
     }
-    drawPixel(3, 1, colors.eye)
-    drawPixel(4, 1, colors.eye)
+    
+    // Eyes with glow effect
+    drawPixel(4, 2, colors.eyeGlow)
+    drawPixel(5, 2, colors.eye)
+    drawPixel(6, 2, colors.eye)
+    drawPixel(7, 2, colors.eyeGlow)
+    
+    // Antenna/horns for hard mode
     if (isHard) {
+        drawPixel(3, 0, colors.accent)
+        drawPixel(8, 0, colors.accent)
         drawPixel(2, 0, colors.accent)
-        drawPixel(5, 0, colors.accent)
-        drawPixel(3, 2, colors.accent)
-        drawPixel(4, 2, colors.accent)
+        drawPixel(9, 0, colors.accent)
     }
-    drawPixel(3, 3, colors.main)
-    drawPixel(4, 3, colors.main)
-    for (let i = 2; i < 6; i++) {
-        for (let j = 4; j < 7; j++) {
+    
+    // Mouth/speaker grille
+    drawPixel(5, 3, colors.accent)
+    drawPixel(6, 3, colors.accent)
+    
+    // Neck
+    for (let i = 4; i < 8; i++) {
+        drawPixel(i, 4, colors.main)
+    }
+    
+    // Body outline
+    for (let i = 2; i < 10; i++) {
+        drawPixel(i, 5, colors.main)
+        drawPixel(i, 6, colors.main)
+        drawPixel(i, 9, colors.main)
+        drawPixel(i, 10, colors.main)
+    }
+    drawPixel(1, 6, colors.main)
+    drawPixel(10, 6, colors.main)
+    drawPixel(1, 7, colors.main)
+    drawPixel(10, 7, colors.main)
+    drawPixel(1, 8, colors.main)
+    drawPixel(10, 8, colors.main)
+    drawPixel(1, 9, colors.main)
+    drawPixel(10, 9, colors.main)
+    
+    // Body fill with shading
+    for (let i = 2; i < 10; i++) {
+        for (let j = 6; j < 9; j++) {
+            drawPixel(i, j, colors.secondary)
+        }
+    }
+    
+    // Body highlights
+    for (let i = 3; i < 9; i++) {
+        for (let j = 6; j < 8; j++) {
             drawPixel(i, j, colors.main)
         }
     }
-    drawPixel(1, 5, colors.arm)
-    drawPixel(6, 5, colors.arm)
-    drawPixel(3, 4, colors.accent)
-    drawPixel(4, 4, colors.accent)
+    
+    // Chest panel
+    for (let i = 4; i < 8; i++) {
+        drawPixel(i, 7, colors.accent)
+    }
+    drawPixel(5, 6, colors.accent)
+    drawPixel(6, 6, colors.accent)
+    
+    // Arms
+    drawPixel(0, 7, colors.arm)
+    drawPixel(1, 7, colors.arm)
+    drawPixel(11, 7, colors.arm)
+    drawPixel(10, 7, colors.arm)
+    
+    // Legs
+    drawPixel(3, 11, colors.main)
+    drawPixel(4, 11, colors.main)
+    drawPixel(7, 11, colors.main)
+    drawPixel(8, 11, colors.main)
+    
+    // Feet
+    drawPixel(2, 11, colors.shadow)
+    drawPixel(3, 11, colors.main)
+    drawPixel(4, 11, colors.main)
+    drawPixel(5, 11, colors.shadow)
+    drawPixel(6, 11, colors.shadow)
+    drawPixel(7, 11, colors.main)
+    drawPixel(8, 11, colors.main)
+    drawPixel(9, 11, colors.shadow)
+    
+    // Additional details for hard mode
+    if (isHard) {
+        // Shoulder spikes
+        drawPixel(1, 5, colors.accent)
+        drawPixel(10, 5, colors.accent)
+        // Glowing chest core
+        drawPixel(5, 7, colors.eyeGlow)
+        drawPixel(6, 7, colors.eyeGlow)
+        // Extra armor plating
+        drawPixel(3, 8, colors.accent)
+        drawPixel(8, 8, colors.accent)
+    }
+    
     ctx.restore()
 }
 
@@ -110,30 +208,45 @@ function applyUpgrade(upgradeType) {
             break
         case 2:
             const availableAbilities = ['homing', 'explosive', 'seedbomb', 'cloner']
-            const randomAbility = availableAbilities[Math.floor(Math.random() * availableAbilities.length)]
-            if (!playerUpgrades.abilities.includes(randomAbility)) {
+            const unownedAbilities = availableAbilities.filter(ability => !playerUpgrades.abilities.includes(ability))
+            
+            if (unownedAbilities.length > 0) {
+                const randomAbility = unownedAbilities[Math.floor(Math.random() * unownedAbilities.length)]
                 playerUpgrades.abilities.push(randomAbility)
+                let abilityTitle = ''
                 let abilityDescription = ''
                 if (randomAbility === 'homing') {
-                    abilityDescription = 'HOMING SEEDS: Every 5th shot will track enemies!'
+                    abilityTitle = 'HOMING SEEDS UNLOCKED!'
+                    abilityDescription = 'Some shots will track enemies!'
                 } else if (randomAbility === 'explosive') {
-                    abilityDescription = 'EXPLOSIVE SEEDS: Every 5th shot will explode on impact!'
+                    abilityTitle = 'EXPLOSIVE SEEDS UNLOCKED!'
+                    abilityDescription = 'Some shots will explode on impact!'
                 } else if (randomAbility === 'seedbomb') {
-                    abilityDescription = 'SEED BOMB: Every 5th shot spreads multiple seeds!'
+                    abilityTitle = 'SEED BOMB UNLOCKED!'
+                    abilityDescription = 'Some shots spread multiple seeds!'
                 } else if (randomAbility === 'cloner') {
-                    abilityDescription = 'CLONER: Every 5th shot creates helpful plant allies!'
+                    abilityTitle = 'CLONER UNLOCKED!'
+                    abilityDescription = 'Some shots create helpful plant allies!'
                 }
-                screen.numbers.push(new Number({
-                    x: cvs.width / 2,
-                    y: cvs.height / 2 + 100,
-                    speed_x: 0,
-                    speed_y: -0.5,
-                    text: abilityDescription,
-                    color: [255, 255, 0, 255],
-                    fade_speed: 1.5
-                }, false))
+                screen.addNotification(abilityTitle, abilityDescription, 'ability')
+            } else {
+                // All abilities already unlocked - give damage bonus instead
+                playerUpgrades.damageMultiplier += 0.25
+                screen.addNotification('ALL ABILITIES UNLOCKED!', '+25% Damage bonus instead', 'ability')
             }
             break
+    }
+}
+
+function checkSkillUnlocks() {
+    if (playerUpgrades.levelsCompleted >= 2 && !playerUpgrades.skills.doubleJump) {
+        playerUpgrades.skills.doubleJump = true
+        screen.addNotification('SKILL UNLOCKED: DOUBLE JUMP!', 'Press JUMP twice to double jump!', 'skill')
+    }
+    
+    if (playerUpgrades.levelsCompleted >= 4 && !playerUpgrades.skills.dash) {
+        playerUpgrades.skills.dash = true
+        screen.addNotification('SKILL UNLOCKED: DASH!', 'Press SHIFT to dash!', 'skill')
     }
 }
 
@@ -242,8 +355,8 @@ function restart() {
     playerUpgrades.abilities = []
     playerUpgrades.levelsCompleted = 0
     playerUpgrades.skills = {
-        doubleJump: true,
-        dash: true
+        doubleJump: false,
+        dash: false
     }
 
     hero.reset()
@@ -429,7 +542,7 @@ function start() {
         let selectedDesc = ''
         if (upgradeSelection === 0) selectedDesc = 'Increase maximum health by 1 and heal 1 HP'
         else if (upgradeSelection === 1) selectedDesc = 'Increase damage by 25%'
-        else if (upgradeSelection === 2) selectedDesc = 'Gain homing or explosive seed ability'
+        else if (upgradeSelection === 2) selectedDesc = 'Gain a special ability'
         ctx.fillText(selectedDesc, cvs.width / 2, iconY + iconSize + labelSize * 4)
         const controlSize = Math.min(cvs.width, cvs.height) / 35
         ctx.font = `${controlSize}px "Courier New", monospace`

@@ -5,6 +5,7 @@ class Screen {
 
     set() {
         this.numbers = []
+        this.notifications = []
 
         this.sun = {
             r: 255,
@@ -83,8 +84,7 @@ class Screen {
         ctx.textAlign = 'left'
         ctx.font = size + 'px "Courier New", monospace'
         ctx.fillText(
-            'UPGRADE: ' + hero.upgrade.toUpperCase() +
-            ' (SPACE TO THROW)', 5, size
+            'LEVEL: ' + (map.level + 1), 5, size
         )
         ctx.fillText(
             'POWER: '
@@ -99,31 +99,150 @@ class Screen {
             abilitiesText += playerUpgrades.abilities.map(a => a.toUpperCase()).join(', ')
         }
         ctx.fillText(abilitiesText, 5, size * 4)
-        if (playerUpgrades.abilities.includes('homing')) {
-            const shotsUntilHoming = 5 - (hero.shot_count % 5)
-            const isHomingReady = (hero.shot_count % 5 === 4)
-            const homingText = isHomingReady ? 'NEXT: HOMING SEED!' : 'HOMING IN: ' + shotsUntilHoming
-            ctx.fillStyle = isHomingReady ? '#0f0' : '#aaa'
-            ctx.fillText(homingText, 5, size * 5)
-            ctx.fillStyle = '#fff'
+        
+        let skillsText = 'SKILLS: '
+        const activeSkills = []
+        if (playerUpgrades.skills.doubleJump) activeSkills.push('DOUBLE JUMP')
+        if (playerUpgrades.skills.dash) activeSkills.push('DASH')
+        
+        if (activeSkills.length === 0) {
+            skillsText += 'NONE'
+        } else {
+            skillsText += activeSkills.join(', ')
         }
-        if (playerUpgrades.abilities.includes('explosive')) {
-            const yPos = playerUpgrades.abilities.includes('homing') ? size * 6 : size * 5
-            const shotsUntilExplosive = hero.shot_count >= 2 ? 5 - ((hero.shot_count - 2) % 5) : 2 - hero.shot_count
-            const isExplosiveReady = hero.shot_count >= 2 && (hero.shot_count - 2) % 5 === 4
-            const explosiveText = hero.shot_count < 2 ? 'EXPLOSIVE IN: ' + (2 - hero.shot_count) : 
-                                  isExplosiveReady ? 'NEXT: EXPLOSIVE!' : 'EXPLOSIVE IN: ' + shotsUntilExplosive
-            ctx.fillStyle = isExplosiveReady ? '#f80' : '#aaa'
-            ctx.fillText(explosiveText, 5, yPos)
-            ctx.fillStyle = '#fff'
-        }
-        const diffYPos = size * (5 + playerUpgrades.abilities.length)
+        ctx.fillText(skillsText, 5, size * 5)
+        
+        const diffYPos = size * 6
         ctx.fillStyle = gameDifficulty === 'easy' ? '#0f0' : '#f00'
         ctx.fillText('MODE: ' + gameDifficulty.toUpperCase(), 5, diffYPos)
         ctx.fillStyle = '#fff'
+        
+        const nextAbilityInfo = hero.getNextAbilityInfo()
+        if (nextAbilityInfo) {
+            ctx.textAlign = 'right'
+            let nextAbilityText = ''
+            if (nextAbilityInfo.shotsUntilNext === 1) {
+                nextAbilityText = `Next: ${nextAbilityInfo.abilityName}`
+            } else {
+                nextAbilityText = `${nextAbilityInfo.shotsUntilNext} to ${nextAbilityInfo.abilityName}`
+            }
+            ctx.fillText(nextAbilityText, cvs.width - 5, size * 2)
+            ctx.textAlign = 'left'
+        }
+        
         this.numbers.forEach(item => {
             item.update()
         })
+        
+        this.updateNotifications()
+    }
+
+    addNotification(title, subtitle, type = 'ability') {
+        const baseY = 80
+        const spacing = 120
+        const existingCount = this.notifications.length
+        
+        const notification = {
+            title: title,
+            subtitle: subtitle,
+            type: type,
+            x: cvs.width / 2,
+            y: baseY + (existingCount * spacing),
+            targetY: baseY + (existingCount * spacing),
+            alpha: 0,
+            scale: 0.5,
+            life: 0,
+            maxLife: 600,
+            phase: 'appearing'
+        }
+        
+        this.notifications.push(notification)
+    }
+
+    updateNotifications() {
+        for (let i = this.notifications.length - 1; i >= 0; i--) {
+            const notif = this.notifications[i]
+            notif.life++
+            
+            if (notif.life < 30) {
+                notif.phase = 'appearing'
+            } else if (notif.life < notif.maxLife - 60) {
+                notif.phase = 'showing'
+            } else {
+                notif.phase = 'fading'
+            }
+            
+            if (notif.phase === 'appearing') {
+                notif.alpha = Math.min(1, notif.life / 30)
+                notif.scale = 0.5 + (0.5 * notif.alpha)
+            } else if (notif.phase === 'showing') {
+                notif.alpha = 1
+                notif.scale = 1 + Math.sin(notif.life * 0.1) * 0.05
+            } else if (notif.phase === 'fading') {
+                const fadeProgress = (notif.life - (notif.maxLife - 60)) / 60
+                notif.alpha = 1 - fadeProgress
+                notif.scale = 1 - (fadeProgress * 0.2)
+            }
+            
+            if (notif.life >= notif.maxLife) {
+                this.notifications.splice(i, 1)
+                this.notifications.forEach((n, index) => {
+                    n.targetY = 80 + (index * 120)
+                })
+                continue
+            }
+            
+            notif.y += (notif.targetY - notif.y) * 0.1
+            
+            this.drawNotification(notif)
+        }
+    }
+
+    drawNotification(notif) {
+        ctx.save()
+        ctx.globalAlpha = notif.alpha
+        
+        const x = notif.x
+        const y = notif.y
+        const scale = notif.scale
+        
+        const colors = notif.type === 'skill' ? {
+            bg: 'rgba(0, 255, 255, 0.9)',
+            border: 'rgba(0, 200, 255, 1)',
+            title: '#000',
+            subtitle: '#333'
+        } : {
+            bg: 'rgba(255, 255, 0, 0.9)',
+            border: 'rgba(255, 200, 0, 1)',
+            title: '#000',
+            subtitle: '#333'
+        }
+        
+        ctx.font = `bold ${28 * scale}px "Courier New", monospace`
+        const titleWidth = ctx.measureText(notif.title).width
+        ctx.font = `${18 * scale}px "Courier New", monospace`
+        const subtitleWidth = ctx.measureText(notif.subtitle).width
+        const maxTextWidth = Math.max(titleWidth, subtitleWidth)
+        const boxWidth = Math.max(400, maxTextWidth + 60) * scale
+        const boxHeight = 80 * scale
+        
+        ctx.fillStyle = colors.bg
+        ctx.fillRect(x - boxWidth/2, y - boxHeight/2, boxWidth, boxHeight)
+        
+        ctx.strokeStyle = colors.border
+        ctx.lineWidth = 3 * scale
+        ctx.strokeRect(x - boxWidth/2, y - boxHeight/2, boxWidth, boxHeight)
+        
+        ctx.fillStyle = colors.title
+        ctx.textAlign = 'center'
+        ctx.font = `bold ${28 * scale}px "Courier New", monospace`
+        ctx.fillText(notif.title, x, y - 10 * scale)
+        
+        ctx.fillStyle = colors.subtitle
+        ctx.font = `${18 * scale}px "Courier New", monospace`
+        ctx.fillText(notif.subtitle, x, y + 15 * scale)
+        
+        ctx.restore()
     }
 
     fadeOut() {
@@ -208,7 +327,7 @@ class Screen {
         const difficultyColor = gameDifficulty === 'easy' ? [0, 255, 0] : [255, 0, 0]
         ctx.fillStyle = rgb(difficultyColor[0], difficultyColor[1], difficultyColor[2], this.fade.a)
         const restartMessage = gameDifficulty === 'easy' ? 
-            'Respawning at level ' + map.level : 
+            'Respawning at level ' + (map.level+1) : 
             'Restarting from level 1'
         ctx.fillText(restartMessage, cvs.width / 2, cvs.height / 2 + size)
         if (this.fade.a >= 1000) {
