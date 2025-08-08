@@ -2,22 +2,20 @@ class World {
     constructor() {
         this.set()
         
-        // TESTING: Change this to jump to any level (0-9, where 4 is boss level)
-        const TEST_LEVEL = 4  // Set to 4 for boss level, 0 for level 1, etc.
+        // TESTING: (0-9, where 4 is boss level)
+        const TEST_LEVEL = 0  
         
         this.level = TEST_LEVEL
         this.level_end = 10
-        this.width = this.level_end + (TEST_LEVEL * 10)  // Adjust width based on level
+        this.width = this.level_end + (TEST_LEVEL * 10) 
         this.change_level = false
         this.plants_on_screen = 0
         
-        // Apply level-appropriate upgrades for testing
         if (TEST_LEVEL > 0) {
             playerUpgrades.levelsCompleted = TEST_LEVEL
             playerUpgrades.maxHealth = 3
             playerUpgrades.damageMultiplier = 1
             
-            // Add some abilities for higher levels
             if (TEST_LEVEL >= 2) {
                 playerUpgrades.abilities = ['homing']
                 playerUpgrades.skills.doubleJump = true
