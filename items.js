@@ -1,4 +1,3 @@
-
 class Junk extends Base {
     constructor (x, y) {
         super()
@@ -113,15 +112,12 @@ class Junk extends Base {
                 translate(anchor_x, anchor_y, this)
                 rotate(this.angle)
 
-                // main bottle
                 ctx.fillStyle = '#7309'
                 scaleRect(.25, 0, .5, 1, this, anchor_x, anchor_y)
                 scaleRect(0, .4, 1, .6, this, anchor_x, anchor_y)
-                // reflection
                 ctx.fillStyle = '#fff5'
                 scaleRect(.3, .4, .1, .6, this, anchor_x, anchor_y)
                 scaleRect(.4, 0, .07, .4, this, anchor_x, anchor_y)
-                // lid
                 ctx.fillStyle = '#4009'
                 scaleRect(.2, 0, .6, .05, this, anchor_x, anchor_y)
                 scaleRect(.2, .09, .6, .05, this, anchor_x, anchor_y)
@@ -139,16 +135,12 @@ class Junk extends Base {
                     anchor_y + random(-.04, .04, 0), this
                 )
                 rotate(this.angle)
-                // main washing machine
-                // const offset_x = 
-                // const offset_y = 
 
                 ctx.fillStyle = '#a98'
                 scaleRect(
                     0, 0, 1, 1, this,
                     anchor_x, anchor_y
                 )
-                // lights
                 for (let i = 0; i < 5; i ++) {
                     if (~~this.time % (i + 2) == 0) {
                         ctx.fillStyle = rgb(
@@ -162,14 +154,12 @@ class Junk extends Base {
                         )
                     }
                 }
-                // spinning bit
                 ctx.fillStyle = '#111b'
                 scaleCir(
                     .5 + random(-.01, .01, 0),
                     .5 + random(-.01, .01, 0),
                     .35, this, anchor_x, anchor_y
                 )
-                // reflection
                 ctx.fillStyle = '#fff5'
                 scaleRect(
                     .475 + Math.sin(this.time * 2) * .25,
@@ -185,20 +175,16 @@ class Junk extends Base {
             ctx.save()
                 translate(anchor_x, anchor_y, this)
                 rotate(this.angle)
-                // main packaging
                 ctx.fillStyle = '#811'
                 scaleRect(0, 0, 1, 1, this, anchor_x, anchor_y)
-                // The 'M'
                 ctx.fillStyle = '#990'
                 scaleRect(.2, .2, .1, .6, this, anchor_x, anchor_y)
                 scaleRect(.3, .3, .1, .2, this, anchor_x, anchor_y)
                 scaleRect(.4, .4, .1, .2, this, anchor_x, anchor_y)
                 scaleRect(.5, .3, .1, .2, this, anchor_x, anchor_y)
                 scaleRect(.6, .2, .1, .6, this, anchor_x, anchor_y)
-                // red top
                 ctx.fillStyle = '#a98'
                 scaleRect(-.05, 0, 1.1, .1, this, anchor_x, anchor_y)
-                // lower text
                 ctx.fillStyle = '#4446'
                 scaleRect(.45, .9, .5, .05, this, anchor_x, anchor_y)
             ctx.restore()
@@ -211,19 +197,16 @@ class Junk extends Base {
             ctx.save()
                 translate(anchor_x, anchor_y, this)
                 rotate(this.angle)
-                // main box bit
                 ctx.fillStyle = '#752'
                 scaleRect(
                     0, 0, 1, 1, this,
                     anchor_x, anchor_y
                 )
-                // side
                 ctx.fillStyle = '#0003'
                 scaleRect(
                     .9, 0, .1, 1, this,
                     anchor_x, anchor_y
                 )
-                // tape
                 ctx.fillStyle = '#0002'
                 scaleRect(
                     0, .4, 1, .2, this,
@@ -233,7 +216,6 @@ class Junk extends Base {
                     .6, 0, .2, .1, this,
                     anchor_x, anchor_y
                 )
-                // text
                 ctx.fillStyle = '#0003'
                 scaleRect(
                     .05, .05, .2, .05, this,
@@ -361,10 +343,30 @@ class Seed extends Upgrade {
         super(d)
 
         this.plant = d.plant
+        this.chargeLevel = d.chargeLevel || 0
+        this.trailParticles = []
     }
 
     update() {
         super.update()
+
+        // Add trail particles for charged seeds
+        if (this.chargeLevel > 0 && Math.random() < 0.3) {
+            this.trailParticles.push({
+                x: this.x + this.width / 2 + random(-0.02, 0.02, 0),
+                y: this.y + this.height / 2 + random(-0.02, 0.02, 0),
+                life: 20 + Math.floor(this.chargeLevel * 30),
+                alpha: 0.8,
+                size: 0.02 + this.chargeLevel * 0.03
+            })
+        }
+        
+        // Update trail particles
+        this.trailParticles = this.trailParticles.filter(particle => {
+            particle.life--
+            particle.alpha = Math.max(0, particle.alpha - 0.04)
+            return particle.life > 0
+        })
 
         if (this.life_time < 0) {
             map.plantsOnScreen()
@@ -386,11 +388,52 @@ class Seed extends Upgrade {
     }
 
     draw() {
+        // Draw trail particles first
+        this.trailParticles.forEach(particle => {
+            ctx.save()
+            ctx.globalAlpha = particle.alpha
+            if (this.chargeLevel >= 1) {
+                ctx.fillStyle = '#ff0' // Gold for max charge
+            } else if (this.chargeLevel >= 0.5) {
+                ctx.fillStyle = '#f80' // Orange for high charge
+            } else {
+                ctx.fillStyle = '#fff' // White for low charge
+            }
+            stretchRect(0, 0, particle.size, particle.size, {
+                x: particle.x,
+                y: particle.y,
+                width: particle.size,
+                height: particle.size
+            })
+            ctx.restore()
+        })
+        
         ctx.save()
         translate(.5, .5, this)
         rotate(this.speed_x * this.speed_y * 1e4)
+        
+        // Base seed color
         ctx.fillStyle = '#652'
         scaleRect(0, 0, 1, 1, this, .5, .5)
+        
+        // Add glow effect for charged seeds
+        if (this.chargeLevel > 0) {
+            ctx.save()
+            ctx.globalAlpha = 0.5 * this.chargeLevel
+            if (this.chargeLevel >= 1) {
+                ctx.fillStyle = '#ff0' // Gold glow for max charge
+                const pulse = Math.sin(Date.now() * 0.02) * 0.2 + 1
+                scaleRect(0, 0, 1, 1, this, .5, .5, pulse * 1.2)
+            } else if (this.chargeLevel >= 0.5) {
+                ctx.fillStyle = '#f80' // Orange glow
+                scaleRect(0, 0, 1, 1, this, .5, .5, 1.1)
+            } else {
+                ctx.fillStyle = '#fff' // White glow
+                scaleRect(0, 0, 1, 1, this, .5, .5, 1.05)
+            }
+            ctx.restore()
+        }
+        
         ctx.restore()
     }
 }
@@ -400,11 +443,31 @@ class SeedBomb extends Upgrade {
         super(d)
 
         this.plant = d.plant
+        this.chargeLevel = d.chargeLevel || 0
+        this.trailParticles = []
     }
     update() {
         super.update()
 
-        const explode_amount = 30
+        // Add trail particles for charged seed bombs
+        if (this.chargeLevel > 0 && Math.random() < 0.4) {
+            this.trailParticles.push({
+                x: this.x + this.width / 2 + random(-0.03, 0.03, 0),
+                y: this.y + this.height / 2 + random(-0.03, 0.03, 0),
+                life: 18 + Math.floor(this.chargeLevel * 25),
+                alpha: 0.8,
+                size: 0.02 + this.chargeLevel * 0.03
+            })
+        }
+        
+        // Update trail particles
+        this.trailParticles = this.trailParticles.filter(particle => {
+            particle.life--
+            particle.alpha = Math.max(0, particle.alpha - 0.05)
+            return particle.life > 0
+        })
+
+        const explode_amount = 30 + Math.floor(this.chargeLevel * 20) // More seeds when charged
 
         if (this.life_time < 0) {
             for (let i = 0; i < explode_amount; i ++) {
@@ -417,7 +480,8 @@ class SeedBomb extends Upgrade {
                         speed_x: random(-.2, .2, 0),
                         speed_y: -random(0, .3, 0),
                         life_time: 100,
-
+                        damage: this.damage * 0.5, // Each individual seed does half damage
+                        chargeLevel: this.chargeLevel * 0.3, // Pass reduced charge to sub-seeds
                         plant: {
                             color: this.plant.color,
                             min_growth: this.plant.min_growth,
@@ -435,11 +499,55 @@ class SeedBomb extends Upgrade {
     }
 
     draw() {
+        // Draw trail particles first
+        this.trailParticles.forEach(particle => {
+            ctx.save()
+            ctx.globalAlpha = particle.alpha
+            if (this.chargeLevel >= 1) {
+                ctx.fillStyle = '#8f0' // Bright green for max charge
+            } else if (this.chargeLevel >= 0.5) {
+                ctx.fillStyle = '#0f8' // Green-cyan for medium charge
+            } else {
+                ctx.fillStyle = '#0f0' // Green for low/no charge
+            }
+            stretchRect(0, 0, particle.size, particle.size, {
+                x: particle.x,
+                y: particle.y,
+                width: particle.size,
+                height: particle.size
+            })
+            ctx.restore()
+        })
+        
         ctx.save()
         translate(.5, .5, this)
         rotate(this.speed_x * this.speed_y * 1e4)
         ctx.fillStyle = '#113'
         scaleRect(0, 0, 1, 1, this, .5, .5)
+        
+        // Add charge effects
+        if (this.chargeLevel > 0) {
+            ctx.save()
+            ctx.globalAlpha = 0.6 * this.chargeLevel
+            if (this.chargeLevel >= 1) {
+                ctx.fillStyle = '#8f0' // Bright green glow for max charge
+                const pulse = Math.sin(Date.now() * 0.02) * 0.3 + 1
+                ctx.shadowColor = '#8f0'
+                ctx.shadowBlur = 15
+                scaleRect(0, 0, 1, 1, this, .5, .5, pulse * 1.3)
+            } else if (this.chargeLevel >= 0.5) {
+                ctx.fillStyle = '#0f8' // Green-cyan glow
+                ctx.shadowColor = '#0f8'
+                ctx.shadowBlur = 12
+                scaleRect(0, 0, 1, 1, this, .5, .5, 1.2)
+            } else {
+                ctx.shadowColor = '#0f0'
+                ctx.shadowBlur = 8
+                scaleRect(0, 0, 1, 1, this, .5, .5, 1.1)
+            }
+            ctx.restore()
+        }
+        
         ctx.restore()
     }
 }
@@ -447,18 +555,41 @@ class SeedBomb extends Upgrade {
 class Cloner extends Upgrade {
     constructor(d) {
         super(d)
+        this.chargeLevel = d.chargeLevel || 0
+        this.trailParticles = []
     }
     update() {
         super.update()
 
+        // Add trail particles for charged cloners
+        if (this.chargeLevel > 0 && Math.random() < 0.3) {
+            this.trailParticles.push({
+                x: this.x + this.width / 2 + random(-0.02, 0.02, 0),
+                y: this.y + this.height / 2 + random(-0.02, 0.02, 0),
+                life: 15 + Math.floor(this.chargeLevel * 20),
+                alpha: 0.7,
+                size: 0.015 + this.chargeLevel * 0.025
+            })
+        }
+        
+        // Update trail particles
+        this.trailParticles = this.trailParticles.filter(particle => {
+            particle.life--
+            particle.alpha = Math.max(0, particle.alpha - 0.05)
+            return particle.life > 0
+        })
+
         if (this.life_time < 0) {
-            map.clones.push(
-                new Clone(
-                    this.x + this.width / 2,
-                    -map.array[Math.floor(this.x + this.width / 2)],
-                    .2, .2
+            const cloneCount = 1 + Math.floor(this.chargeLevel * 2) // 1-3 clones based on charge
+            for (let i = 0; i < cloneCount; i++) {
+                map.clones.push(
+                    new Clone(
+                        this.x + this.width / 2 + random(-0.1, 0.1, 0),
+                        -map.array[Math.floor(this.x + this.width / 2)],
+                        .2, .2
+                    )
                 )
-            )
+            }
             map.used_power.splice(map.used_power.indexOf(this), 1)
         }
 
@@ -466,11 +597,53 @@ class Cloner extends Upgrade {
     }
 
     draw() {
+        this.trailParticles.forEach(particle => {
+            ctx.save()
+            ctx.globalAlpha = particle.alpha
+            if (this.chargeLevel >= 1) {
+                ctx.fillStyle = '#0ff' // Cyan for max charge
+            } else if (this.chargeLevel >= 0.5) {
+                ctx.fillStyle = '#08f' // Blue-cyan for medium charge
+            } else {
+                ctx.fillStyle = '#0f0' // Green for low/no charge
+            }
+            stretchRect(0, 0, particle.size, particle.size, {
+                x: particle.x,
+                y: particle.y,
+                width: particle.size,
+                height: particle.size
+            })
+            ctx.restore()
+        })
+        
         ctx.save()
         translate(.5, .5, this)
         rotate(this.speed_x * this.speed_y * 1e4)
         ctx.fillStyle = '#0f0'
         scaleRect(0, 0, 1, 1, this, .5, .5)
+        
+        if (this.chargeLevel > 0) {
+            ctx.save()
+            ctx.globalAlpha = 0.5 * this.chargeLevel
+            if (this.chargeLevel >= 1) {
+                ctx.fillStyle = '#0ff' // Cyan glow for max charge
+                const pulse = Math.sin(Date.now() * 0.025) * 0.2 + 1
+                ctx.shadowColor = '#0ff'
+                ctx.shadowBlur = 12
+                scaleRect(0, 0, 1, 1, this, .5, .5, pulse * 1.2)
+            } else if (this.chargeLevel >= 0.5) {
+                ctx.fillStyle = '#08f' // Blue-cyan glow
+                ctx.shadowColor = '#08f'
+                ctx.shadowBlur = 10
+                scaleRect(0, 0, 1, 1, this, .5, .5, 1.15)
+            } else {
+                ctx.shadowColor = '#0f0'
+                ctx.shadowBlur = 8
+                scaleRect(0, 0, 1, 1, this, .5, .5, 1.1)
+            }
+            ctx.restore()
+        }
+        
         ctx.restore()
     }
 }
@@ -479,15 +652,16 @@ class HomingSeed extends Upgrade {
     constructor(d) {
         super(d)
         
-        this.homing_speed = 0.008  // More aggressive homing
+        this.homing_speed = 0.008 
         this.target = null
         this.hit_effect_timer = 0
         this.hit_effect_active = false
+        this.chargeLevel = d.chargeLevel || 0
+        this.trailParticles = []
         
-        // Override the inherited speeds to make it slower initially
-        this.speed_x *= 0.3  // Make initial speed much slower
+        this.speed_x *= 0.3  
         this.speed_y *= 0.3
-        this.max_speed = 0.08  // Higher max speed for better homing
+        this.max_speed = 0.08 * (1 + this.chargeLevel * 0.5) 
     }
 
     findNearestEnemy() {
@@ -507,7 +681,6 @@ class HomingSeed extends Upgrade {
             }
         })
         
-        // Also check clones (they don't have health property, so just check if they exist)
         map.clones.forEach(clone => {
             const dx = clone.x + clone.width/2 - (this.x + this.width/2)
             const dy = clone.y + clone.height/2 - (this.y + this.height/2)
@@ -523,7 +696,6 @@ class HomingSeed extends Upgrade {
     }
 
     createHitEffect(x, y) {
-        // Create white particles for hit effect
         for (let i = 0; i < 8; i++) {
             screen.numbers.push(new Number({
                 x: x,
@@ -538,31 +710,44 @@ class HomingSeed extends Upgrade {
     }
 
     update() {
-        // Don't call super.update() - we'll handle physics ourselves for better control
         this.life_time --
+
+        if (this.chargeLevel > 0 && Math.random() < 0.4) {
+            this.trailParticles.push({
+                x: this.x + this.width / 2 + random(-0.02, 0.02, 0),
+                y: this.y + this.height / 2 + random(-0.02, 0.02, 0),
+                life: 15 + Math.floor(this.chargeLevel * 25),
+                alpha: 0.9,
+                size: 0.015 + this.chargeLevel * 0.025
+            })
+        }
+        
+        this.trailParticles = this.trailParticles.filter(particle => {
+            particle.life--
+            particle.alpha = Math.max(0, particle.alpha - 0.06)
+            return particle.life > 0
+        })
 
         if (this.life_time < 0) {
             map.used_power.splice(map.used_power.indexOf(this), 1)
             return
         }
 
-        // Find target if we don't have one or if current target is dead
         if (!this.target || (this.target.health !== undefined && this.target.health <= 0)) {
             this.target = this.findNearestEnemy()
         }
 
-        // Home towards target if we have one
         if (this.target && (this.target.health === undefined || this.target.health > 0)) {
             const dx = this.target.x + this.target.width/2 - (this.x + this.width/2)
             const dy = this.target.y + this.target.height/2 - (this.y + this.height/2)
             const distance = Math.sqrt(dx * dx + dy * dy)
             
             if (distance > 0) {
-                // More aggressive homing - adjust velocity toward target
-                this.speed_x += (dx / distance) * this.homing_speed
-                this.speed_y += (dy / distance) * this.homing_speed
+                const enhancedHomingSpeed = this.homing_speed * (1 + this.chargeLevel * 0.5)
+                this.speed_x += (dx / distance) * enhancedHomingSpeed
+                this.speed_y += (dy / distance) * enhancedHomingSpeed
                 
-                // Cap the speed so it doesn't get too fast
+                // cap the speed so it doesn't get too fast
                 const currentSpeed = Math.sqrt(this.speed_x * this.speed_x + this.speed_y * this.speed_y)
                 if (currentSpeed > this.max_speed) {
                     this.speed_x = (this.speed_x / currentSpeed) * this.max_speed
@@ -571,18 +756,14 @@ class HomingSeed extends Upgrade {
             }
         }
 
-        // Apply much less gravity so it can curve upward toward targets
         this.speed_y += gravity * 0.1
 
-        // Update position
         this.x += this.speed_x
         this.y += this.speed_y
 
-        // Apply minimal air resistance to maintain momentum
         this.speed_x *= 0.995
         this.speed_y *= 0.995
 
-        // Only remove if we're way out of bounds (no wall collision)
         if (this.x < -5 || this.x > map.width + 5 || this.y > 20) {
             map.used_power.splice(map.used_power.indexOf(this), 1)
             return
@@ -592,16 +773,57 @@ class HomingSeed extends Upgrade {
     }
 
     draw() {
+        this.trailParticles.forEach(particle => {
+            ctx.save()
+            ctx.globalAlpha = particle.alpha
+            if (this.chargeLevel >= 1) {
+                ctx.fillStyle = '#ff0' // Gold for max charge
+            } else if (this.chargeLevel >= 0.5) {
+                ctx.fillStyle = '#8ff' // Light blue for medium charge
+            } else {
+                ctx.fillStyle = '#fff' // White for low/no charge
+            }
+            stretchRect(0, 0, particle.size, particle.size, {
+                x: particle.x,
+                y: particle.y,
+                width: particle.size,
+                height: particle.size
+            })
+            ctx.restore()
+        })
+        
         ctx.save()
         translate(.5, .5, this)
         rotate(this.speed_x * this.speed_y * 1e4)
-        ctx.fillStyle = '#fff'  // White color for homing seed
+        ctx.fillStyle = '#fff'  // White
         scaleRect(0, 0, 1, 1, this, .5, .5)
         
-        // Add a slight glow effect
-        ctx.shadowColor = '#fff'
-        ctx.shadowBlur = 10
-        scaleRect(0, 0, 1, 1, this, .5, .5)
+        if (this.chargeLevel > 0) {
+            ctx.save()
+            ctx.globalAlpha = 0.6 * this.chargeLevel
+            if (this.chargeLevel >= 1) {
+                ctx.fillStyle = '#ff0' // Gold 
+                const pulse = Math.sin(Date.now() * 0.03) * 0.3 + 1
+                ctx.shadowColor = '#ff0'
+                ctx.shadowBlur = 15
+                scaleRect(0, 0, 1, 1, this, .5, .5, pulse * 1.3)
+            } else if (this.chargeLevel >= 0.5) {
+                ctx.fillStyle = '#8ff' // Light blue
+                ctx.shadowColor = '#8ff'
+                ctx.shadowBlur = 10
+                scaleRect(0, 0, 1, 1, this, .5, .5, 1.2)
+            } else {
+                ctx.shadowColor = '#fff'
+                ctx.shadowBlur = 8
+                scaleRect(0, 0, 1, 1, this, .5, .5, 1.1)
+            }
+            ctx.restore()
+        } else {
+            // Add a slight glow effect for regular homing seed
+            ctx.shadowColor = '#fff'
+            ctx.shadowBlur = 10
+            scaleRect(0, 0, 1, 1, this, .5, .5)
+        }
         
         ctx.restore()
     }
@@ -612,10 +834,28 @@ class ExplosiveSeed extends Upgrade {
         super(d)
         
         this.explosive = true
+        this.chargeLevel = d.chargeLevel || 0
+        this.trailParticles = []
     }
 
     update() {
         super.update()
+
+        if (this.chargeLevel > 0 && Math.random() < 0.5) {
+            this.trailParticles.push({
+                x: this.x + this.width / 2 + random(-0.03, 0.03, 0),
+                y: this.y + this.height / 2 + random(-0.03, 0.03, 0),
+                life: 20 + Math.floor(this.chargeLevel * 30),
+                alpha: 0.8,
+                size: 0.02 + this.chargeLevel * 0.04
+            })
+        }
+        
+        this.trailParticles = this.trailParticles.filter(particle => {
+            particle.life--
+            particle.alpha = Math.max(0, particle.alpha - 0.04)
+            return particle.life > 0
+        })
 
         if (this.life_time < 0) {
             // Create explosion effect
@@ -627,16 +867,57 @@ class ExplosiveSeed extends Upgrade {
     }
 
     draw() {
+        this.trailParticles.forEach(particle => {
+            ctx.save()
+            ctx.globalAlpha = particle.alpha
+            if (this.chargeLevel >= 1) {
+                ctx.fillStyle = '#ff0' // Gold
+            } else if (this.chargeLevel >= 0.5) {
+                ctx.fillStyle = '#f40' // Red-orange
+            } else {
+                ctx.fillStyle = '#f80' // Orange
+            }
+            stretchRect(0, 0, particle.size, particle.size, {
+                x: particle.x,
+                y: particle.y,
+                width: particle.size,
+                height: particle.size
+            })
+            ctx.restore()
+        })
+        
         ctx.save()
         translate(.5, .5, this)
         rotate(this.speed_x * this.speed_y * 1e4)
-        ctx.fillStyle = '#f80'  // Orange color for explosive seed
+        ctx.fillStyle = '#f80' 
         scaleRect(0, 0, 1, 1, this, .5, .5)
         
-        // Add a pulsing glow effect
-        ctx.shadowColor = '#f80'
-        ctx.shadowBlur = 15
-        scaleRect(0, 0, 1, 1, this, .5, .5)
+        if (this.chargeLevel > 0) {
+            ctx.save()
+            ctx.globalAlpha = 0.7 * this.chargeLevel
+            if (this.chargeLevel >= 1) {
+                ctx.fillStyle = '#ff0' // Gold glow for max charge
+                const pulse = Math.sin(Date.now() * 0.025) * 0.4 + 1
+                ctx.shadowColor = '#ff0'
+                ctx.shadowBlur = 20
+                scaleRect(0, 0, 1, 1, this, .5, .5, pulse * 1.4)
+            } else if (this.chargeLevel >= 0.5) {
+                ctx.fillStyle = '#f40' // Bright red-orange glow
+                ctx.shadowColor = '#f40'
+                ctx.shadowBlur = 15
+                scaleRect(0, 0, 1, 1, this, .5, .5, 1.3)
+            } else {
+                ctx.shadowColor = '#f80'
+                ctx.shadowBlur = 12
+                scaleRect(0, 0, 1, 1, this, .5, .5, 1.15)
+            }
+            ctx.restore()
+        } else {
+            // Add a pulsing glow effect
+            ctx.shadowColor = '#f80'
+            ctx.shadowBlur = 15
+            scaleRect(0, 0, 1, 1, this, .5, .5)
+        }
         
         ctx.restore()
     }

@@ -165,7 +165,6 @@ class Player extends Robot {
         this.power = 0
         this.shot_count = 0
         
-        // Initialize ability tracking - each ability gets its own offset
         this.abilityCounters = {}
         
         // Skills tracking
@@ -190,12 +189,32 @@ class Player extends Robot {
     throw() {
         this.shot_count++
         
-        const baseDamage = playerUpgrades.baseDamage * playerUpgrades.damageMultiplier
+        // calculate charge multiplier (1x to 2x based on charge level)
+        const chargeMultiplier = 1 + charging.chargeLevel
+        const baseDamage = playerUpgrades.baseDamage * playerUpgrades.damageMultiplier * chargeMultiplier
         
-        // Initialize ability counters with evenly spaced distribution
+        // calculate direction from player to mouse cursor
+        const playerCenterX = this.x + this.width / 2
+        const playerCenterY = this.y + this.height / 2
+        
+        const deltaX = mouse.worldX - playerCenterX
+        const deltaY = mouse.worldY - playerCenterY
+        const distance = Math.sqrt(deltaX * deltaX + deltaY * deltaY)
+        
+        const baseSpeed = 0.1 * chargeMultiplier
+        let speed_x = 0
+        let speed_y = 0
+        
+        if (distance > 0) {
+            speed_x = (deltaX / distance) * baseSpeed
+            speed_y = (deltaY / distance) * baseSpeed
+        } else {
+            speed_x = baseSpeed * this.dir.face
+            speed_y = -0.05
+        }
+        
         playerUpgrades.abilities.forEach((ability, index) => {
             if (!(ability in this.abilityCounters)) {
-                // Distribute abilities evenly: if we have n abilities, space them 5/n shots apart
                 const numAbilities = playerUpgrades.abilities.length
                 const spacing = Math.max(1, Math.floor(5 / numAbilities))
                 const offset = Math.floor(5 * (index + 1) / (numAbilities + 1))
@@ -207,7 +226,6 @@ class Player extends Robot {
         let nextAbilityShot = Infinity
         let nextAbilityName = ''
         
-        // First, check if any ability should be used this shot
         for (let ability of playerUpgrades.abilities) {
             if (this.shot_count === this.abilityCounters[ability]) {
                 usedAbility = ability
@@ -216,7 +234,6 @@ class Player extends Robot {
             }
         }
         
-        // Then, find the next closest ability (after potentially updating counters)
         for (let ability of playerUpgrades.abilities) {
             if (this.abilityCounters[ability] > this.shot_count && this.abilityCounters[ability] < nextAbilityShot) {
                 nextAbilityShot = this.abilityCounters[ability]
@@ -224,43 +241,42 @@ class Player extends Robot {
             }
         }
         
+        const seedConfig = {
+            x: playerCenterX,
+            y: playerCenterY,
+            width: .1 * (0.8 + 0.4 * charging.chargeLevel), // Size scales with charge
+            height: .1 * (0.8 + 0.4 * charging.chargeLevel),
+            speed_x: speed_x,
+            speed_y: speed_y,
+            life_time: 100 + Math.floor(100 * charging.chargeLevel), // Longer travel time when charged
+            damage: baseDamage,
+            chargeLevel: charging.chargeLevel // Pass charge level for visual effects
+        }
+        
         if (usedAbility === 'homing') {
             map.used_power.push(
                 new HomingSeed({
-                    x: this.x + this.width / 2,
-                    y: this.y + this.height / 2,
-                    width: .08,
-                    height: .08,
-                    speed_x: .08 * this.dir.face,
-                    speed_y: -.04,
-                    life_time: 300,
-                    damage: baseDamage
+                    ...seedConfig,
+                    width: .08 * (0.8 + 0.4 * charging.chargeLevel),
+                    height: .08 * (0.8 + 0.4 * charging.chargeLevel),
+                    life_time: 300 + Math.floor(200 * charging.chargeLevel)
                 })
             )
         } else if (usedAbility === 'explosive') {
             map.used_power.push(
                 new ExplosiveSeed({
-                    x: this.x + this.width / 2,
-                    y: this.y + this.height / 2,
-                    width: .09,
-                    height: .09,
-                    speed_x: .1 * this.dir.face + random(-.01, .01, 0),
-                    speed_y: -.05,
-                    life_time: 120,
-                    damage: baseDamage * 3
+                    ...seedConfig,
+                    width: .09 * (0.8 + 0.4 * charging.chargeLevel),
+                    height: .09 * (0.8 + 0.4 * charging.chargeLevel),
+                    life_time: 120 + Math.floor(80 * charging.chargeLevel),
+                    damage: baseDamage * 3 // Explosive already has damage multiplier
                 })
             )
         } else if (usedAbility === 'seedbomb') {
             map.used_power.push(
                 new SeedBomb({
-                    x: this.x + this.width / 2,
-                    y: this.y + this.height / 2,
-                    width: .1,
-                    height: .1,
-                    speed_x: .1 * this.dir.face + random(-.01, .01, 0),
-                    speed_y: -.05,
-                    life_time: 200,
-                    damage: baseDamage,
+                    ...seedConfig,
+                    life_time: 200 + Math.floor(100 * charging.chargeLevel),
                     plant: {
                         color: [0],
                         min_growth: 1,
@@ -273,28 +289,15 @@ class Player extends Robot {
         } else if (usedAbility === 'cloner') {
             map.used_power.push(
                 new Cloner({
-                    x: this.x + this.width / 2,
-                    y: this.y + this.height / 2,
-                    width: .1,
-                    height: .1,
-                    speed_x: .1 * this.dir.face + random(-.01, .01, 0),
-                    speed_y: -.05,
-                    life_time: 100,
-                    damage: baseDamage
+                    ...seedConfig,
+                    life_time: 100 + Math.floor(50 * charging.chargeLevel)
                 })
             )
         } else {
             // Normal shot (default seed type)
             map.used_power.push(
                 new Seed({
-                    x: this.x + this.width / 2,
-                    y: this.y + this.height / 2,
-                    width: .1,
-                    height: .1,
-                    speed_x: .1 * this.dir.face + random(-.01, .01, 0),
-                    speed_y: -.05,
-                    life_time: 100,
-                    damage: baseDamage,
+                    ...seedConfig,
                     plant: {
                         color: [0],
                         min_growth: 1,
@@ -306,7 +309,20 @@ class Player extends Robot {
             )
         }
         
-        // Show countdown to next ability if there are abilities and one is coming up
+        if (charging.chargeLevel > 0) {
+            for (let i = 0; i < Math.floor(5 * charging.chargeLevel); i++) {
+                screen.numbers.push(new Number({
+                    x: playerCenterX + random(-0.3, 0.3, 0),
+                    y: playerCenterY + random(-0.3, 0.3, 0),
+                    speed_x: random(-2, 2, 0),
+                    speed_y: random(-3, -1, 0),
+                    text: charging.chargeLevel >= 1 ? '✦' : '✧',
+                    color: charging.chargeLevel >= 1 ? [255, 255, 0, 255] : [255, 255, 255, 200],
+                    fade_speed: 4
+                }))
+            }
+        }
+        
         if (playerUpgrades.abilities.length > 0 && nextAbilityShot !== Infinity) {
             const shotsUntilNext = nextAbilityShot - this.shot_count
             if (shotsUntilNext > 0 && shotsUntilNext <= 4) { // Only show countdown for 1-4 shots away
@@ -330,7 +346,9 @@ class Player extends Robot {
             }
         }
 
-        this.power --
+        if (charging.ammoConsumed === 0 && this.power > 0) {
+            this.power --
+        }
     }
 
     getNextAbilityInfo() {
@@ -544,6 +562,166 @@ class Player extends Robot {
                 this.eye(0, eye_y, eye, face)
                 this.eye(.2, eye_y, eye, face)
             }
+        }
+        
+        if (charging.active || (mouse.worldX !== undefined && mouse.worldY !== undefined)) {
+            this.drawTrajectoryPreview()
+        }
+        
+        if (charging.active) {
+            this.drawChargeBar()
+        }
+    }
+    
+    drawTrajectoryPreview() {
+        const playerCenterX = this.x + this.width / 2
+        const playerCenterY = this.y + this.height / 2
+        
+        const deltaX = mouse.worldX - playerCenterX
+        const deltaY = mouse.worldY - playerCenterY
+        const distance = Math.sqrt(deltaX * deltaX + deltaY * deltaY)
+        
+        if (distance === 0) return
+        
+        const chargeMultiplier = 1 + (charging.active ? charging.chargeLevel : 0)
+        const baseSpeed = 0.1 * chargeMultiplier
+        
+        let speed_x = (deltaX / distance) * baseSpeed
+        let speed_y = (deltaY / distance) * baseSpeed
+        
+        const maxSteps = Math.floor(15 + 10 * (charging.active ? charging.chargeLevel : 0)) // Show more path when charged
+        const stepSize = 1.0 // Time step for simulation
+        
+        let simX = playerCenterX
+        let simY = playerCenterY
+        let simSpeedX = speed_x
+        let simSpeedY = speed_y
+        
+        const trajectoryPoints = []
+        
+        for (let step = 0; step < maxSteps; step++) {
+            simSpeedY += gravity * stepSize
+            simSpeedX *= 0.97 // Air resistance
+            
+            simX += simSpeedX * stepSize
+            simY += simSpeedY * stepSize
+            
+            if (simX < 0 || simX > map.width) break
+            
+            const groundHeight = map.array[Math.floor(simX)]
+            if (groundHeight && simY >= -groundHeight) {
+                // Add final point at ground level
+                trajectoryPoints.push({
+                    x: simX,
+                    y: -groundHeight,
+                    isEnd: true
+                })
+                break
+            }
+            
+            trajectoryPoints.push({
+                x: simX,
+                y: simY,
+                isEnd: false
+            })
+        }
+        
+        ctx.save()
+        for (let i = 0; i < trajectoryPoints.length; i++) {
+            const point = trajectoryPoints[i]
+            const alpha = 1 - (i / trajectoryPoints.length) * 0.7 
+            
+            if (point.isEnd) {
+                ctx.fillStyle = charging.active && charging.chargeLevel >= 1 ? 
+                    `rgba(255, 255, 0, ${alpha})` : `rgba(255, 100, 100, ${alpha})`
+                const size = 0.08
+                stretchRect(
+                    point.x - size/2, 
+                    point.y - size/2, 
+                    size, 
+                    size, 
+                    { x: 0, y: 0, width: 1, height: 1 }
+                )
+            } else {
+                ctx.fillStyle = charging.active && charging.chargeLevel >= 1 ? 
+                    `rgba(255, 255, 0, ${alpha})` : `rgba(255, 255, 255, ${alpha})`
+                const size = 0.04
+                stretchRect(
+                    point.x - size/2, 
+                    point.y - size/2, 
+                    size, 
+                    size, 
+                    { x: 0, y: 0, width: 1, height: 1 }
+                )
+            }
+        }
+        ctx.restore()
+    }
+    
+    drawChargeBar() {
+        const barWidth = 0.4
+        const barHeight = 0.06
+        const barX = this.x + this.width / 2 - barWidth / 2
+        const barY = this.y - 0.15
+        
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.6)'
+        stretchRect(barX, barY, barWidth, barHeight, { x: 0, y: 0, width: 1, height: 1 })
+        
+        ctx.strokeStyle = 'rgba(255, 255, 255, 0.8)'
+        ctx.lineWidth = 2
+        ctx.strokeRect(
+            (barX * scale) - cam.offset_x,
+            (barY * scale) - cam.offset_y,
+            barWidth * scale,
+            barHeight * scale
+        )
+        
+        const fillWidth = barWidth * charging.chargeLevel
+        if (fillWidth > 0) {
+            let fillColor
+            if (charging.chargeLevel >= 1) {
+                fillColor = 'rgba(255, 255, 0, 0.9)' // Gold for max charge
+            } else if (charging.chargeLevel >= 0.66) {
+                fillColor = 'rgba(255, 150, 0, 0.9)' // Orange for high charge
+            } else if (charging.chargeLevel >= 0.33) {
+                fillColor = 'rgba(255, 100, 0, 0.9)' // Red-orange for medium charge
+            } else {
+                fillColor = 'rgba(255, 255, 255, 0.9)' // White for low charge
+            }
+            
+            ctx.fillStyle = fillColor
+            stretchRect(barX, barY, fillWidth, barHeight, { x: 0, y: 0, width: 1, height: 1 })
+        }
+        
+        for (let i = 1; i < 3; i++) {
+            const segmentX = barX + (barWidth * i / 3)
+            ctx.strokeStyle = 'rgba(255, 255, 255, 0.4)'
+            ctx.lineWidth = 1
+            ctx.beginPath()
+            ctx.moveTo((segmentX * scale) - cam.offset_x, (barY * scale) - cam.offset_y)
+            ctx.lineTo((segmentX * scale) - cam.offset_x, ((barY + barHeight) * scale) - cam.offset_y)
+            ctx.stroke()
+        }
+        
+        if (charging.ammoConsumed > 0) {
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.9)'
+            ctx.font = Math.max(12, (cvs.width + cvs.height) / 120) + 'px "Courier New", monospace'
+            ctx.textAlign = 'center'
+            const textX = (this.x + this.width / 2) * scale - cam.offset_x
+            const textY = (barY - 0.02) * scale - cam.offset_y
+            ctx.fillText(`-${charging.ammoConsumed} ENERGY`, textX, textY)
+        }
+        
+        if (charging.active && hero.power <= 0) {
+            ctx.fillStyle = 'rgba(255, 50, 50, 1.0)' 
+            ctx.font = Math.max(12, (cvs.width + cvs.height) / 120) + 'px "Courier New", monospace'
+            ctx.textAlign = 'center'
+            const textX = (this.x + this.width / 2) * scale - cam.offset_x
+            const textY = (barY + barHeight + 0.06) * scale - cam.offset_y
+            ctx.strokeStyle = 'rgba(0, 0, 0, 0.8)'
+            ctx.lineWidth = 3
+            ctx.strokeText('OUT OF ENERGY!', textX, textY)
+            ctx.fillText('OUT OF ENERGY!', textX, textY)
         }
     }
 }

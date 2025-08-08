@@ -87,7 +87,7 @@ class Screen {
             'LEVEL: ' + (map.level + 1), 5, size
         )
         ctx.fillText(
-            'POWER: '
+            'ENERGY: '
             + ~~hero.power + ' / ' + hero.max_power, 5, size * 2
         )
         ctx.fillText('DMG: ' + (playerUpgrades.baseDamage * playerUpgrades.damageMultiplier).toFixed(1) + 
@@ -165,7 +165,7 @@ class Screen {
             notif.life++
             
             if (notif.life < 30) {
-                notif.phase = 'appearing'
+                notif.phase = 'appearing' 
             } else if (notif.life < notif.maxLife - 60) {
                 notif.phase = 'showing'
             } else {

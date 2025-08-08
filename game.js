@@ -252,10 +252,12 @@ function drawUpgradeIcon(x, y, size, upgradeType, isSelected = false) {
     }
     ctx.restore()
 }
-
+    
 function update() {
     ctx.clearRect(0, 0, cvs.width, cvs.height)
     scale = cvs.width / cam.zoom
+
+    updateCharging()
 
     screen.background()
     cam.update()
