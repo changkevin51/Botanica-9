@@ -285,7 +285,12 @@ function restart() {
     map.generate()
 
     playerUpgrades.maxHealth = 3
-    playerUpgrades.baseDamage = 0.15
+    // Set base damage based on current difficulty
+    if (gameDifficulty === 'easy') {
+        playerUpgrades.baseDamage = 0.2
+    } else {
+        playerUpgrades.baseDamage = 0.15
+    }
     playerUpgrades.damageMultiplier = 1.0
     playerUpgrades.abilities = []
     playerUpgrades.levelsCompleted = 0
@@ -402,6 +407,13 @@ function start() {
         }
         if (key.space) {
             gameDifficulty = difficultySelection === 0 ? 'easy' : 'hard'
+            
+            if (gameDifficulty === 'easy') {
+                playerUpgrades.baseDamage = 0.2
+            } else {
+                playerUpgrades.baseDamage = 0.15
+            }
+            
             gameState = 'transition'
             screen.fade.type = 'out'
             screen.fade.a = 0
