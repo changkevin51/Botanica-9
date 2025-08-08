@@ -1,3 +1,100 @@
+class Heart extends Base {
+    constructor(x, y) {
+        super()
+        this.x = x
+        this.y = y
+        this.width = 0.25
+        this.height = 0.25
+        
+        this.animationTimer = 0
+        this.floatOffset = 0
+        this.collected = false
+    }
+    
+    update() {
+        if (this.collected) return
+        
+        if (!this.onScreen()) return
+        
+        this.animationTimer += 0.08
+        this.floatOffset = Math.sin(this.animationTimer) * 0.02
+        
+        if (collide(this, hero)) {
+            if (hero.health < playerUpgrades.maxHealth) {
+                hero.health++
+                this.collected = true
+                
+                screen.numbers.push(new Number({
+                    x: this.x + this.width / 2,
+                    y: this.y,
+                    speed_x: 0,
+                    speed_y: -2,
+                    text: '+1 HEALTH',
+                    color: [255, 100, 150, 255],
+                    fade_speed: 2
+                }))
+                
+                const index = map.hearts.indexOf(this)
+                if (index > -1) {
+                    map.hearts.splice(index, 1)
+                }
+            }
+        }
+        
+        this.draw()
+    }
+    
+    draw() {
+        if (this.collected) return
+        
+        ctx.save()
+        
+        const drawY = this.y + this.floatOffset
+        
+        ctx.shadowColor = '#ff69b4'
+        ctx.shadowBlur = 15
+        
+        if (heartImage.complete) {
+            ctx.drawImage(
+                heartImage,
+                (this.x * scale) - cam.offset_x,
+                (drawY * scale) - cam.offset_y,
+                this.width * scale,
+                this.height * scale
+            )
+        } else {
+            ctx.fillStyle = '#ff1493'
+            stretchRect(0, 0, 1, 1, {
+                x: this.x,
+                y: drawY,
+                width: this.width,
+                height: this.height
+            })
+        }
+        
+        const sparklePhase = this.animationTimer * 2
+        if (Math.sin(sparklePhase) > 0.5) {
+            ctx.fillStyle = '#fff'
+            ctx.globalAlpha = 0.8
+            
+            for (let i = 0; i < 3; i++) {
+                const angle = (sparklePhase + i * 120) * Math.PI / 180
+                const sparkleX = this.x + this.width / 2 + Math.cos(angle) * 0.1
+                const sparkleY = drawY + this.height / 2 + Math.sin(angle) * 0.1
+                
+                stretchRect(0, 0, 0.02, 0.02, {
+                    x: sparkleX,
+                    y: sparkleY,
+                    width: 0.02,
+                    height: 0.02
+                })
+            }
+        }
+        
+        ctx.restore()
+    }
+}
+
 class Junk extends Base {
     constructor (x, y) {
         super()
@@ -344,13 +441,13 @@ class Seed extends Upgrade {
 
         this.plant = d.plant
         this.chargeLevel = d.chargeLevel || 0
+        this.isBossSeed = d.isBossSeed || false
         this.trailParticles = []
     }
 
     update() {
         super.update()
 
-        // Add trail particles for charged seeds
         if (this.chargeLevel > 0 && Math.random() < 0.3) {
             this.trailParticles.push({
                 x: this.x + this.width / 2 + random(-0.02, 0.02, 0),
@@ -361,17 +458,25 @@ class Seed extends Upgrade {
             })
         }
         
-        // Update trail particles
         this.trailParticles = this.trailParticles.filter(particle => {
             particle.life--
             particle.alpha = Math.max(0, particle.alpha - 0.04)
             return particle.life > 0
         })
 
+        // Boss seed collision with player
+        if (this.isBossSeed && collide(this, hero) && !hero.recover_time) {
+            hero.hit = true
+            map.used_power.splice(map.used_power.indexOf(this), 1)
+            return
+        }
+
         if (this.life_time < 0) {
             map.plantsOnScreen()
-            map.plants.push(
-                new Plant({
+            
+            // Check if this is a boss seed
+            if (this.isBossSeed) {
+                const bossFlower = new Plant({
                     x: this.x + this.width / 2,
                     y: -map.array[Math.floor(this.x + this.width / 2)],
                     color: this.plant.color,
@@ -380,7 +485,22 @@ class Seed extends Upgrade {
                     stem_limit_min: this.plant.stem_limit_min,
                     stem_limit_max: this.plant.stem_limit_max
                 })
-            )
+                bossFlower.isBossFlower = true
+                bossFlower.bossFlowerTimer = 600 // 10 seconds before disappearing
+                map.plants.push(bossFlower)
+            } else {
+                map.plants.push(
+                    new Plant({
+                        x: this.x + this.width / 2,
+                        y: -map.array[Math.floor(this.x + this.width / 2)],
+                        color: this.plant.color,
+                        min_growth: this.plant.min_growth,
+                        max_growth: this.plant.max_growth,
+                        stem_limit_min: this.plant.stem_limit_min,
+                        stem_limit_max: this.plant.stem_limit_max
+                    })
+                )
+            }
             map.used_power.splice(map.used_power.indexOf(this), 1)
         }
 
@@ -388,7 +508,6 @@ class Seed extends Upgrade {
     }
 
     draw() {
-        // Draw trail particles first
         this.trailParticles.forEach(particle => {
             ctx.save()
             ctx.globalAlpha = particle.alpha
@@ -412,16 +531,22 @@ class Seed extends Upgrade {
         translate(.5, .5, this)
         rotate(this.speed_x * this.speed_y * 1e4)
         
-        // Base seed color
-        ctx.fillStyle = '#652'
+        // Boss seeds are red and glowing
+        if (this.isBossSeed) {
+            ctx.fillStyle = '#a00'
+            ctx.shadowColor = '#ff0000'
+            ctx.shadowBlur = 15
+        } else {
+            ctx.fillStyle = '#652'
+        }
+        
         scaleRect(0, 0, 1, 1, this, .5, .5)
         
-        // Add glow effect for charged seeds
-        if (this.chargeLevel > 0) {
+        if (this.chargeLevel > 0 && !this.isBossSeed) {
             ctx.save()
             ctx.globalAlpha = 0.5 * this.chargeLevel
             if (this.chargeLevel >= 1) {
-                ctx.fillStyle = '#ff0' // Gold glow for max charge
+                ctx.fillStyle = '#ff0' // Gold glow
                 const pulse = Math.sin(Date.now() * 0.02) * 0.2 + 1
                 scaleRect(0, 0, 1, 1, this, .5, .5, pulse * 1.2)
             } else if (this.chargeLevel >= 0.5) {
@@ -449,7 +574,6 @@ class SeedBomb extends Upgrade {
     update() {
         super.update()
 
-        // Add trail particles for charged seed bombs
         if (this.chargeLevel > 0 && Math.random() < 0.4) {
             this.trailParticles.push({
                 x: this.x + this.width / 2 + random(-0.03, 0.03, 0),
@@ -460,14 +584,13 @@ class SeedBomb extends Upgrade {
             })
         }
         
-        // Update trail particles
         this.trailParticles = this.trailParticles.filter(particle => {
             particle.life--
             particle.alpha = Math.max(0, particle.alpha - 0.05)
             return particle.life > 0
         })
 
-        const explode_amount = 30 + Math.floor(this.chargeLevel * 20) // More seeds when charged
+        const explode_amount = 20 + Math.floor(this.chargeLevel * 20) // More seeds when charged
 
         if (this.life_time < 0) {
             for (let i = 0; i < explode_amount; i ++) {
@@ -480,8 +603,8 @@ class SeedBomb extends Upgrade {
                         speed_x: random(-.2, .2, 0),
                         speed_y: -random(0, .3, 0),
                         life_time: 100,
-                        damage: this.damage * 0.5, // Each individual seed does half damage
-                        chargeLevel: this.chargeLevel * 0.3, // Pass reduced charge to sub-seeds
+                        damage: this.damage * 0.5, 
+                        chargeLevel: this.chargeLevel * 0.3, 
                         plant: {
                             color: this.plant.color,
                             min_growth: this.plant.min_growth,
@@ -499,7 +622,6 @@ class SeedBomb extends Upgrade {
     }
 
     draw() {
-        // Draw trail particles first
         this.trailParticles.forEach(particle => {
             ctx.save()
             ctx.globalAlpha = particle.alpha
@@ -580,7 +702,7 @@ class Cloner extends Upgrade {
         })
 
         if (this.life_time < 0) {
-            const cloneCount = 1 + Math.floor(this.chargeLevel * 2) // 1-3 clones based on charge
+            const cloneCount = 1 + Math.floor(this.chargeLevel) // +1 clone at max charge
             for (let i = 0; i < cloneCount; i++) {
                 map.clones.push(
                     new Clone(
@@ -819,7 +941,6 @@ class HomingSeed extends Upgrade {
             }
             ctx.restore()
         } else {
-            // Add a slight glow effect for regular homing seed
             ctx.shadowColor = '#fff'
             ctx.shadowBlur = 10
             scaleRect(0, 0, 1, 1, this, .5, .5)
@@ -982,5 +1103,75 @@ class Explosion extends Base {
                 this.height * scale
             )
         }
+    }
+}
+
+class BossFlower extends Plant {
+    constructor(d) {
+        super(d)
+        this.isBossFlower = true
+        this.slowDuration = 60 // 1 second at 60 FPS
+        this.glowPhase = 0
+    }
+
+    update() {
+        super.update()
+        this.glowPhase += 0.1
+        
+        // Check collision with player
+        if (collide(this, hero) && !hero.slowedByFlower) {
+            hero.slowedByFlower = true
+            hero.slowDuration = this.slowDuration
+            hero.originalSpeed = hero.speed
+            hero.speed = hero.originalSpeed * 0.5 // Half speed
+            
+            // Visual feedback
+            screen.numbers.push(new Number({
+                x: hero.x + hero.width / 2,
+                y: hero.y,
+                speed_x: 0,
+                speed_y: -2,
+                text: 'SLOWED!',
+                color: [255, 100, 100, 255],
+                fade_speed: 2
+            }))
+            
+            // Remove the flower after stepping on it
+            this.die = true
+        }
+    }
+
+    draw() {
+        ctx.save()
+        
+        // Red glowing effect for boss flowers
+        const glow = Math.sin(this.glowPhase) * 0.3 + 0.7
+        ctx.shadowColor = '#ff0000'
+        ctx.shadowBlur = 15 * glow
+        
+        // Use parent class drawing but with red coloring
+        this.stems.forEach((item, index) => {
+            ctx.beginPath()
+
+            ctx.strokeStyle = `rgba(255, 100, 100, ${glow})`
+            line(
+                item.x, item.y,
+                item.x + cos(item.angle - 90) * item.length,
+                item.y + sin(item.angle - 90) * item.length, .01
+            )
+            ctx.fillStyle = rgb(
+                255, // Red channel
+                Math.max(50, this.color[1] * 0.3), // Reduced green
+                Math.max(50, this.color[2] * 0.3), // Reduced blue
+                this.color[3] * glow
+            )
+            stretchRect(
+                cos(item.angle - 90) * item.length - .025,
+                sin(item.angle - 90) * item.length - .025,
+                .05, .05, {x: item.x, y: item.y, width: 1, height: 1}
+            )
+        })
+        
+        ctx.restore()
     }
 }

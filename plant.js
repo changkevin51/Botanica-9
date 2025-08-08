@@ -93,6 +93,33 @@ class Plant extends Base {
             })
         }
 
+        if (this.isBossFlower) {
+            if (this.bossFlowerTimer !== undefined) {
+                this.bossFlowerTimer--
+                if (this.bossFlowerTimer <= 0) {
+                    this.die = true
+                }
+            }
+            
+            if (collide(this, hero) && !hero.slowedByFlower) {
+                hero.slowedByFlower = true
+                hero.slowDuration = 60 // 1 second at 60 FPS
+                hero.speed = hero.originalSpeed * 0.5 // Half speed
+                
+                screen.numbers.push(new Number({
+                    x: hero.x + hero.width / 2,
+                    y: hero.y - 0.2,
+                    speed_x: 0,
+                    speed_y: -1,
+                    text: 'SLOWED!',
+                    color: [255, 100, 100, 255],
+                    fade_speed: 2
+                }))
+                
+                this.die = true
+            }
+        }
+
         this.draw()
     }
 

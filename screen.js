@@ -211,6 +211,11 @@ class Screen {
             border: 'rgba(0, 200, 255, 1)',
             title: '#000',
             subtitle: '#333'
+        } : notif.type === 'boss' ? {
+            bg: 'rgba(255, 0, 0, 0.9)',
+            border: 'rgba(255, 100, 100, 1)',
+            title: '#fff',
+            subtitle: '#eee'
         } : {
             bg: 'rgba(255, 255, 0, 0.9)',
             border: 'rgba(255, 200, 0, 1)',

@@ -1,11 +1,32 @@
 class World {
     constructor() {
         this.set()
-        this.level = 0 
+        
+        // TESTING: Change this to jump to any level (0-9, where 4 is boss level)
+        const TEST_LEVEL = 4  // Set to 4 for boss level, 0 for level 1, etc.
+        
+        this.level = TEST_LEVEL
         this.level_end = 10
-        this.width = this.level_end
+        this.width = this.level_end + (TEST_LEVEL * 10)  // Adjust width based on level
         this.change_level = false
         this.plants_on_screen = 0
+        
+        // Apply level-appropriate upgrades for testing
+        if (TEST_LEVEL > 0) {
+            playerUpgrades.levelsCompleted = TEST_LEVEL
+            playerUpgrades.maxHealth = 3
+            playerUpgrades.damageMultiplier = 1
+            
+            // Add some abilities for higher levels
+            if (TEST_LEVEL >= 2) {
+                playerUpgrades.abilities = ['homing']
+                playerUpgrades.skills.doubleJump = true
+            }
+            if (TEST_LEVEL >= 4) {
+                playerUpgrades.abilities = ['homing', 'explosive']
+                playerUpgrades.skills.dash = true
+            }
+        }
     }
 
     set() {
@@ -17,8 +38,11 @@ class World {
         this.plants = []
         this.plant_screen = []
         this.explosions = []
+        this.hearts = []
         this.junk_timer_start = 3
         this.junk_timer = this.junk_timer_start
+        this.heartSpawnTimer = 600 // 10 seconds at 60 FPS
+        this.heartSpawnCooldown = 0
     }
 
     changeLevel() {
@@ -30,10 +54,19 @@ class World {
                 playerUpgrades.levelsCompleted = Math.max(playerUpgrades.levelsCompleted, this.level)
                 checkSkillUnlocks()
                 this.set()
-                this.width += 10
+                // Don't increase width for boss level, it's set in generate()
+                if (this.level !== 4) {
+                    this.width += 10
+                }
                 map.generate()
                 hero.reset()
                 this.applyLevelVisualEffects()
+                
+                // Check if entering boss level
+                if (this.level === 4) {
+                    screen.addNotification('BOSS LEVEL!', 'Prepare to face the ultimate challenge!', 'boss')
+                }
+                
                 this.change_level = false
             }
         } else {
@@ -57,10 +90,19 @@ class World {
                     playerUpgrades.levelsCompleted = Math.max(playerUpgrades.levelsCompleted, this.level)
                     checkSkillUnlocks()
                     this.set()
-                    this.width += 10
+                    // Don't increase width for boss level, it's set in generate()
+                    if (this.level !== 4) {
+                        this.width += 10
+                    }
                     map.generate()
                     hero.reset()
                     this.applyLevelVisualEffects()
+                    
+                    // Check if entering boss level
+                    if (this.level === 4) {
+                        screen.addNotification('BOSS LEVEL!', 'Prepare to face the ultimate challenge!', 'boss')
+                    }
+                    
                     this.change_level = false
                 }
             }
@@ -78,43 +120,80 @@ class World {
     }
 
     generate() {
-        const enemy_amount = ~~((this.level_end - this.level * 3) * 0.7)
-        let make_enemies = enemy_amount
-        const append_junk = x => {
-            this.junk.push(
-                new Junk(
-                    x + random(.1, .9, 0),
-                    -this.array[x]
+        // Check if this is the boss level (level 4, 0-indexed)
+        if (this.level === 4) {
+            // Boss stage - smaller map
+            this.width = 15
+            
+            const append_junk = x => {
+                this.junk.push(
+                    new Junk(
+                        x + random(.1, .9, 0),
+                        -this.array[x]
+                    )
                 )
-            )
-        }
-        for (let i = 0; i < this.width; i ++) {
-            this.array[i] = 5 + random(
-                Math.abs(Math.sin(i / 2 ^ 9) * 3),
-                Math.abs(Math.sin(i / 9 ^ 9) * 5), 0
-            )
-            this.junk_timer --
-            if (this.junk_timer <= 0) {
-                for (let n = 0; n < this.junk_timer_start + 2; n ++) append_junk(i)
-                this.junk_timer_start = random(1, 5)
-                this.junk_timer = this.junk_timer_start
             }
-            make_enemies --
-            if (i > 8) {
-                if (make_enemies <= 0) {
-                    if (this.level == this.level_end - 1) {
-                        this.enemies.push(
-                            new Enemy(i, -this.array[i] - .35, .35, .35)
-                        )
-                        this.enemies.push(
-                            new Enemy(i + .5, -this.array[i] - .35, .35, .35)
-                        )
+            
+            // Generate flatter terrain for boss fight
+            for (let i = 0; i < this.width; i++) {
+                this.array[i] = 3 + random(0, 2, 0) // Flatter ground
+                
+                // Add some junk but less than normal
+                if (i % 5 === 0) append_junk(i)
+            }
+            
+            // Spawn boss at a good position
+            const bossX = 8 // Place boss closer to the player start position
+            const bossHeight = 0.8
+            const groundHeight = this.array[Math.floor(bossX)]
+            const bossY = -groundHeight - bossHeight // Place boss on top of ground
+            
+            console.log(`Spawning boss at position (${bossX}, ${bossY}) on level ${this.level}`)
+            console.log(`Boss ground height at position ${bossX}: ${groundHeight}`)
+            
+            this.enemies.push(
+                new Boss(bossX, bossY, 0.8, 0.8) // Slightly smaller boss to avoid collision issues
+            )
+        } else {
+            // Normal level generation
+            const enemy_amount = ~~((this.level_end - this.level * 3) * 0.7)
+            let make_enemies = enemy_amount
+            const append_junk = x => {
+                this.junk.push(
+                    new Junk(
+                        x + random(.1, .9, 0),
+                        -this.array[x]
+                    )
+                )
+            }
+            for (let i = 0; i < this.width; i ++) {
+                this.array[i] = 5 + random(
+                    Math.abs(Math.sin(i / 2 ^ 9) * 3),
+                    Math.abs(Math.sin(i / 9 ^ 9) * 5), 0
+                )
+                this.junk_timer --
+                if (this.junk_timer <= 0) {
+                    for (let n = 0; n < this.junk_timer_start + 2; n ++) append_junk(i)
+                    this.junk_timer_start = random(1, 5)
+                    this.junk_timer = this.junk_timer_start
+                }
+                make_enemies --
+                if (i > 8) {
+                    if (make_enemies <= 0) {
+                        if (this.level == this.level_end - 1) {
+                            this.enemies.push(
+                                new Enemy(i, -this.array[i] - .35, .35, .35)
+                            )
+                            this.enemies.push(
+                                new Enemy(i + .5, -this.array[i] - .35, .35, .35)
+                            )
+                        }
+                        else
+                            this.enemies.push(
+                                new Enemy(i, -this.array[i] - .35, .35, .35)
+                            )
+                        make_enemies = enemy_amount
                     }
-                    else
-                        this.enemies.push(
-                            new Enemy(i, -this.array[i] - .35, .35, .35)
-                        )
-                    make_enemies = enemy_amount
                 }
             }
         }
@@ -157,6 +236,45 @@ class World {
         this.explosions.forEach(item => {
             item.update()
         })
+        this.hearts.forEach(item => {
+            item.update()
+        })
+        
+        // heart spawning system
+        if (this.heartSpawnCooldown > 0) {
+            this.heartSpawnCooldown--
+        }
+        
+        if (hero.health < playerUpgrades.maxHealth && this.heartSpawnCooldown <= 0 && this.hearts.length === 0) {
+            if (Math.random() < 0.0008) {
+                try {
+                    const randomX = random(2, this.width - 2, 0)
+                    const groundHeight = this.array[Math.floor(randomX)]
+                    this.hearts.push(
+                        new Heart(
+                            randomX,
+                            -groundHeight - 0.5
+                        )
+                    )
+                    this.heartSpawnCooldown = 600
+                } catch (error) {
+                    console.log('Heart class not ready yet:', error)
+                }
+            }
+        }
+        
+        // generate continuous junk for boss level
+        if (this.level === 4 && this.junk.length < 7) {
+            const randomX = random(1, this.width - 1, 0)
+            const groundHeight = this.array[Math.floor(randomX)]
+            this.junk.push(
+                new Junk(
+                    randomX,
+                    -groundHeight
+                )
+            )
+        }
+        
         const colorGround = distance => {
             const light = .5 + Math.abs(distance) / 10
             return ctx.fillStyle = rgb(20 / light + 30, 20 / light, 20 / light)

@@ -3,14 +3,13 @@
 class Robot extends Base {
     constructor(x, y, width, height) {
         super()
-
+        this.land_on_side = false
         this.x = x
         this.y = y
+
+        this.speed_y = 0
         this.width = width
         this.height = height
-
-        this.land_on_side = false
-        this.speed_y = 0
 
         this.in_air = true
         this.blink = {
@@ -177,6 +176,11 @@ class Player extends Robot {
         this.dashDuration = 0  // How long the dash lasts
         this.dashMaxDuration = 15  // Dash duration in frames
         this.dashDirection = 0  // Direction of the dash
+
+        // Boss flower slow effect
+        this.slowedByFlower = false
+        this.slowDuration = 0
+        this.originalSpeed = this.speed
 
         this.x = .35
         this.y = -10
@@ -495,6 +499,15 @@ class Player extends Robot {
             trail.alpha = Math.max(0, trail.alpha - 0.08)
             return trail.life > 0
         })
+        
+        // Handle boss flower slow effect
+        if (this.slowedByFlower) {
+            this.slowDuration--
+            if (this.slowDuration <= 0) {
+                this.slowedByFlower = false
+                this.speed = this.originalSpeed
+            }
+        }
         
         if (this.hit) {
             screen.numbers.push(new Number({
@@ -929,6 +942,268 @@ class Enemy extends Robot {
 
         ctx.fillStyle = '#000'
         stretchRect(0, -.3, this.health, .05, this)
+    }
+}
+
+class Boss extends Robot {
+    constructor(x, y, width, height) {
+        super(x, y, width, height)
+        
+        this.maxHealth = 20
+        this.health = this.maxHealth
+        this.speed = 0.01 
+        this.shootTimer = 180 // 3 seconds at 60 FPS
+        this.maxShootTimer = 180
+        this.targetX = 0
+        this.targetY = 0
+        this.moveTimer = 0
+        this.phase = 1 // Phase 1: normal, Phase 2: enraged at 50% health
+        this.bossFlowers = [] 
+        this.appearanceTimer = 180 
+    }
+
+    updateTarget() {
+        this.targetX = hero.x + hero.width / 2
+        this.targetY = hero.y + hero.height / 2
+    }
+
+    shootAtPlayer() {
+        if (this.shootTimer <= 0 && this.appearanceTimer <= 0) {
+            const deltaX = this.targetX - (this.x + this.width / 2)
+            const deltaY = this.targetY - (this.y + this.height / 2)
+            const distance = Math.sqrt(deltaX * deltaX + deltaY * deltaY)
+            
+            if (distance > 0) {
+                const horizontalDistance = Math.abs(deltaX)
+                const verticalDistance = deltaY
+                
+                const estimatedTime = horizontalDistance / 0.12 
+                
+                const speed_x = deltaX > 0 ? 0.12 : -0.12 
+                const speed_y = (verticalDistance / estimatedTime) - (gravity * estimatedTime / 2) 
+                
+                // boss seed that will become a red flower
+                const bossSeed = new Seed({
+                    x: this.x + this.width / 2,
+                    y: this.y + this.height / 2,
+                    width: 0.12,
+                    height: 0.12,
+                    speed_x: speed_x,
+                    speed_y: speed_y,
+                    life_time: 120,
+                    plant: {
+                        color: [255, 50, 50, 255], // Red flower
+                        min_growth: 2,
+                        max_growth: 3,
+                        stem_limit_min: 1,
+                        stem_limit_max: 2
+                    },
+                    isBossSeed: true
+                })
+                
+                map.used_power.push(bossSeed)
+                
+                this.shootTimer = this.phase === 1 ? this.maxShootTimer : 90 // 1.5 seconds in phase 2
+            }
+        } else {
+            this.shootTimer--
+        }
+    }
+
+    update() {
+        if (this.appearanceTimer > 0) {
+            this.appearanceTimer--
+            if (this.appearanceTimer % 10 === 0) {
+                cam.shake = 20
+                cam.shift = 0.01
+            }
+            this.draw()
+            return
+        }
+
+        super.update()
+
+        if (this.health <= 0) {
+            this.kill()
+            return
+        }
+
+        if (this.health <= this.maxHealth / 2 && this.phase === 1) {
+            this.phase = 2
+            this.speed = 0.02 
+            this.maxShootTimer = 90 
+            cam.shake = 30
+            cam.shift = 0.015
+            
+            screen.addNotification('BOSS ENRAGED!', 'Increased speed and attack rate!', 'boss')
+        }
+
+        this.updateTarget()
+        this.shootAtPlayer()
+
+        const deltaX = this.targetX - (this.x + this.width / 2)
+        if (Math.abs(deltaX) > 0.5) {
+            if (deltaX > 0) {
+                this.dir.move = 1
+                this.dir.face = 1
+            } else {
+                this.dir.move = -1
+                this.dir.face = -1
+            }
+        } else {
+            this.dir.move = 0
+        }
+
+        this.collideGround()
+        
+        if (collide(this, hero) && !hero.recover_time) {
+            hero.hit = true
+        }
+        
+        map.used_power.forEach(item => {
+            if (collide(this, item) && !item.isBossSeed) {
+                if (this.health > 0 && item.damage !== undefined && item.damage > 0) {
+                    const itemDamage = item.damage
+                    this.health -= itemDamage
+                    
+                    screen.numbers.push(new Number({
+                        x: this.x + this.width / 2,
+                        y: this.y,
+                        speed_x: random(-1, 1, 0),
+                        speed_y: -3,
+                        text: '-' + itemDamage.toFixed(1),
+                        color: [255, 100, 100, 255],
+                        fade_speed: 3
+                    }))
+
+                    cam.shake = 15
+                    cam.shift = 0.008
+                    map.used_power.splice(map.used_power.indexOf(item), 1)
+                }
+            }
+        })
+        
+        map.plant_screen.forEach(item => {
+            if (collide(this, item) && !item.isBossFlower) {
+                const plantDamage = 0.001 // reduced damage compared to regular enemies (0.003)
+                this.health -= plantDamage
+                
+                if (Math.random() < 0.02) { // only show damage number occasionally to avoid spam
+                    screen.numbers.push(new Number({
+                        x: this.x + this.width / 2,
+                        y: this.y,
+                        speed_x: random(-0.5, 0.5, 0),
+                        speed_y: -1,
+                        text: '-' + plantDamage.toFixed(3),
+                        color: [100, 255, 100, 255],
+                        fade_speed: 4
+                    }))
+                }
+
+                cam.shake = 5
+                cam.shift = 0.001
+            }
+        })
+
+        if (this.land_on_side && this.speed_y >= 0) this.jump(0.06)
+
+        this.draw()
+    }
+
+    kill() {
+        this.death('#800')
+        
+        if (this.health > -10000) {
+            this.jump(0.15)
+            this.health -= 20000
+            
+            for (let i = 0; i < 10; i++) {
+                map.explosions.push(new Explosion({
+                    x: this.x + random(0, this.width, 0),
+                    y: this.y + random(0, this.height, 0),
+                    scale: random(2, 4, 0)
+                }))
+            }
+            
+            screen.numbers.push(new Number({
+                x: cvs.width / 2,
+                y: cvs.height / 2,
+                speed_x: 0,
+                speed_y: -1,
+                text: 'BOSS DEFEATED!',
+                color: [255, 215, 0, 255],
+                fade_speed: 1
+            }, false))
+            
+            // Clear all boss flowers
+            map.plants = map.plants.filter(plant => !plant.isBossFlower)
+            
+            map.checkIfAllEnemiesAreDead()
+        }
+    }
+
+    draw() {
+        const face = this.phase === 1 ? '#a44' : '#f00'  // Red face in phase 2
+        const eye = this.phase === 1 ? '#f00' : '#ff0'   // Yellow eyes in phase 2
+        const arm = this.phase === 1 ? '#500' : '#800'   // Darker arms in phase 2
+        const main = this.phase === 1 ? '#800' : '#a00'  // Redder body in phase 2
+        const eye_y = 0.2
+        
+        // Entrance effect
+        if (this.appearanceTimer > 0) {
+            ctx.save()
+            const shake = Math.sin(this.appearanceTimer * 0.3) * 0.02
+            ctx.translate(shake * scale, shake * scale)
+        }
+
+        this.body(main, face)
+        this.arm(-0.8, 0.8, arm)  // Bigger arms for boss
+        this.arm(0.8, 0.8, arm)
+
+        // Eyes
+        if (!this.dir.move) {
+            this.eye(-0.3, eye_y, eye, face)
+            this.eye(0.3, eye_y, eye, face)
+        } else {
+            if (this.dir.move === -1) {
+                this.eye(-0.4, eye_y, eye, face)
+                this.eye(0.2, eye_y, eye, face)
+            }
+            if (this.dir.move === 1) {
+                this.eye(-0.2, eye_y, eye, face)
+                this.eye(0.4, eye_y, eye, face)
+            }
+        }
+
+        // Health bar
+        const barWidth = this.width
+        const barHeight = 0.08
+        const barX = 0
+        const barY = -0.4
+
+        // Background
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.8)'
+        stretchRect(barX, barY, barWidth, barHeight, this)
+
+        // Health fill
+        const healthPercent = this.health / this.maxHealth
+        const fillColor = healthPercent > 0.5 ? '#0f0' : healthPercent > 0.25 ? '#ff0' : '#f00'
+        ctx.fillStyle = fillColor
+        stretchRect(barX, barY, barWidth * healthPercent, barHeight, this)
+
+        // Border
+        ctx.strokeStyle = '#fff'
+        ctx.lineWidth = 2
+        ctx.strokeRect(
+            (this.x + barX) * scale - cam.offset_x,
+            (this.y + barY) * scale - cam.offset_y,
+            barWidth * scale,
+            barHeight * scale
+        )
+        
+        if (this.appearanceTimer > 0) {
+            ctx.restore()
+        }
     }
 }
 

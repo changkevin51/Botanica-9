@@ -25,6 +25,9 @@ let playerUpgrades = {
 const titleImage = new Image()
 titleImage.src = 'titlepage.png'
 
+const heartImage = new Image()
+heartImage.src = 'heart.png'
+
 const cam = new Camera(0, 0)
 const map = new World()
 const hero = new Player(.25, .3)
@@ -387,8 +390,8 @@ function start() {
         const descSize = Math.min(cvs.width, cvs.height) / 35
         ctx.font = `${descSize}px "Courier New", monospace`
         ctx.fillStyle = '#ccc'
-        const easyDesc = 'Respawn at current level'
-        const hardDesc = 'Restart from level 1'
+        const easyDesc = 'Respawn at current level + Deal more damage'
+        const hardDesc = 'Restart from level 1 if you die'
         const selectedDesc = difficultySelection === 0 ? easyDesc : hardDesc
         ctx.fillText(selectedDesc, cvs.width / 2, robotY + robotSize + labelSize * 4)
         const controlSize = Math.min(cvs.width, cvs.height) / 30
