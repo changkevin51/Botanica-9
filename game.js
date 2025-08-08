@@ -12,7 +12,7 @@ let titleAnimationTime = 0
 let upgradeSelection = 0
 let playerUpgrades = {
     maxHealth: 3,
-    baseDamage: 1,
+    baseDamage: 0.15,  
     damageMultiplier: 1.0,
     abilities: [],
     levelsCompleted: 0,
@@ -31,7 +31,7 @@ const hero = new Player(.25, .3)
 const screen = new Screen()
 
 playerUpgrades.maxHealth = 3
-playerUpgrades.baseDamage = 1
+playerUpgrades.baseDamage = 0.15
 playerUpgrades.damageMultiplier = 1.0
 playerUpgrades.abilities = []
 playerUpgrades.levelsCompleted = 0
@@ -103,7 +103,6 @@ function drawPixelatedRobot(x, y, size, isHard = false, opacity = 1) {
     }
 
     // Neck
-    // This draws the 4x2 neck connecting the head and body.
     for (let i = 6; i < 8; i++) {
         for (let j = 4; j < 6; j++) {
             drawPixel(i, j, colors.main);
@@ -111,15 +110,12 @@ function drawPixelatedRobot(x, y, size, isHard = false, opacity = 1) {
     }
 
     // Body
-    // This creates the main 10x6 rectangular body.
     for (let i = 2; i < 12; i++) {
         for (let j = 6; j < 12; j++) {
             drawPixel(i, j, colors.main);
         }
     }
 
-    // Arms
-    // These loops draw the two 2x2 darker grey arms.
     // Left arm
     for (let i = 0; i < 2; i++) {
         for (let j = 7; j < 9; j++) {
@@ -146,11 +142,11 @@ function applyUpgrade(upgradeType) {
             playerUpgrades.damageMultiplier += 0.25
             break
         case 2:
-            const availableAbilities = ['homing', 'explosive', 'seedbomb', 'cloner']
+            const availableAbilities = ['explosive']
             const unownedAbilities = availableAbilities.filter(ability => !playerUpgrades.abilities.includes(ability))
             
             if (unownedAbilities.length > 0) {
-                const randomAbility = unownedAbilities[Math.floor(Math.random() * unownedAbilities.length)]
+                const randomAbility = unownedAbilities[Math.floor(Math .random() * unownedAbilities.length)]
                 playerUpgrades.abilities.push(randomAbility)
                 let abilityTitle = ''
                 let abilityDescription = ''
@@ -289,7 +285,7 @@ function restart() {
     map.generate()
 
     playerUpgrades.maxHealth = 3
-    playerUpgrades.baseDamage = 1
+    playerUpgrades.baseDamage = 0.15
     playerUpgrades.damageMultiplier = 1.0
     playerUpgrades.abilities = []
     playerUpgrades.levelsCompleted = 0

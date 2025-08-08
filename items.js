@@ -278,6 +278,7 @@ class Upgrade extends Base {
         this.speed_x = d.speed_x
         this.speed_y = d.speed_y
         this.life_time = d.life_time
+        this.damage = d.damage  
 
         this.in_air = true
     }

@@ -247,7 +247,7 @@ class Player extends Robot {
                     speed_x: .1 * this.dir.face + random(-.01, .01, 0),
                     speed_y: -.05,
                     life_time: 120,
-                    damage: baseDamage * 1.5
+                    damage: baseDamage * 3
                 })
             )
         } else if (usedAbility === 'seedbomb') {
@@ -672,10 +672,11 @@ class Enemy extends Robot {
         map.used_power.forEach(item => {
             if (collide(this, item)) {
                 if (this.health > 0) {
-                    const baseDamage = item.damage || this.seed_health_loss
+                    // Use the item's damage if it exists, otherwise fall back to default seed damage
+                    const itemDamage = (item.damage !== undefined) ? item.damage : this.seed_health_loss
                     
                     if (item.constructor.name === 'ExplosiveSeed') {
-                        this.health -= baseDamage * 1.5 
+                        this.health -= itemDamage  // ExplosiveSeed already has 3x damage multiplier built in
                         // Create explosion animation
                         map.explosions.push(new Explosion(this.x + this.width/2, this.y + this.height/2))
                         const knockbackForce = 0.3 
@@ -686,10 +687,10 @@ class Enemy extends Robot {
                         this.in_air = true  
                     }
                     else if (item.constructor.name === 'HomingSeed') {
-                        this.health -= baseDamage
+                        this.health -= itemDamage
                         item.createHitEffect(this.x + this.width/2, this.y + this.height/2)
                     } else {
-                        this.health -= baseDamage
+                        this.health -= itemDamage
                     }
                 }
 
