@@ -161,10 +161,10 @@ function applyUpgrade(upgradeType) {
                     abilityDescription = 'Some shots will explode on impact!'
                 } else if (randomAbility === 'seedbomb') {
                     abilityTitle = 'SEED BOMB UNLOCKED!'
-                    abilityDescription = 'Some shots spread multiple seeds!'
+                    abilityDescription = 'Some shots spread multiple seeds if untouched!'
                 } else if (randomAbility === 'cloner') {
                     abilityTitle = 'CLONER UNLOCKED!'
-                    abilityDescription = 'Some shots create helpful plant allies!'
+                    abilityDescription = 'Some shots create helpful plant allies if untouched!'
                 }
                 screen.addNotification(abilityTitle, abilityDescription, 'ability')
             } else {
