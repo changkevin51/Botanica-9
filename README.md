@@ -14,8 +14,10 @@ In Botanica-9, you play as a robot on a mission to protect your home. You'll nav
 The controls are straightforward:
 
 *   **Move:** A/D or Left/Right Arrow keys
-*   **Jump:** W or Up Arrow key
-*   **Shoot/Throw:** Spacebar or X
+*   **Jump:** W, Up Arrow key, or Spacebar
+*   **Shoot/Throw:** Left Mouse Button (hold to charge)
+*   **Aim:** Mouse movement
+*   **Alternative Throw:** X key
 *   **Menu Navigation:** Spacebar/Enter (Depends on screen)
 
 Your goal is to defeat all the enemies in each level. As you progress, you'll get opportunities to upgrade your robot with new abilities, increased health, and more powerful attacks. Choose your upgrades wisely to handle the increasing difficulty.

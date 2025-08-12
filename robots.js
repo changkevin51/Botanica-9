@@ -443,7 +443,7 @@ class Player extends Robot {
 
         this.collideGround()
 
-        const jumpPressed = key.arrowup || key.w || key.z
+        const jumpPressed = key.arrowup || key.w || key.z || key.space
         const jumpJustPressed = jumpPressed && !this.prevJumpPressed
         
         if (jumpPressed && this.speed_y >= 0 && this.land_on_side) {

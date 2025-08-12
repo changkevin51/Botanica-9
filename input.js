@@ -21,7 +21,8 @@ const mouse = {
     x: 0,
     y: 0,
     worldX: 0,
-    worldY: 0
+    worldY: 0,
+    leftButton: false
 }
 
 const charging = {
@@ -34,25 +35,82 @@ const charging = {
 }
 
 function initializeInput() {
+    // Initialize pointer lock
+    cvs.requestPointerLock = cvs.requestPointerLock || cvs.mozRequestPointerLock
+    document.exitPointerLock = document.exitPointerLock || document.mozExitPointerLock
+
+    cvs.addEventListener('click', () => {
+        if (document.pointerLockElement !== cvs) {
+            cvs.requestPointerLock()
+        }
+    })
+
+    document.addEventListener('pointerlockchange', () => {
+        if (document.pointerLockElement === cvs) {
+            console.log('Pointer lock activated')
+        } else {
+            console.log('Pointer lock deactivated')
+        }
+    })
+
     addEventListener('mousemove', e => {
-        const rect = cvs.getBoundingClientRect()
-        mouse.x = e.clientX - rect.left
-        mouse.y = e.clientY - rect.top
+        if (document.pointerLockElement === cvs) {
+            // Use movement deltas when pointer is locked
+            mouse.x += e.movementX
+            mouse.y += e.movementY
+            
+            // Keep mouse coordinates within canvas bounds
+            mouse.x = Math.max(0, Math.min(cvs.width, mouse.x))
+            mouse.y = Math.max(0, Math.min(cvs.height, mouse.y))
+        } else {
+            // Use absolute coordinates when pointer is not locked
+            const rect = cvs.getBoundingClientRect()
+            mouse.x = e.clientX - rect.left
+            mouse.y = e.clientY - rect.top
+        }
 
         mouse.worldX = (mouse.x / scale) + (cam.offset_x / scale)
         mouse.worldY = (mouse.y / scale) + (cam.offset_y / scale)
     })
 
-    addEventListener('keydown', e => {
-        if (e.repeat) return
-
-        if (e.key === ' ') {
+    addEventListener('mousedown', e => {
+        if (e.button === 0) { // Left mouse button
             if (!charging.active && hero.health && ~~hero.power && gameState === 'playing') {
                 charging.active = true
                 charging.startTime = Date.now()
                 charging.ammoConsumed = 0
                 charging.lastAmmoTime = Date.now()
             }
+            mouse.leftButton = true
+        }
+    })
+
+    addEventListener('mouseup', e => {
+        if (e.button === 0) { // Left mouse button
+            if (charging.active && hero.health && gameState === 'playing') {
+                hero.throw()
+            }
+            charging.active = false
+            charging.startTime = 0
+            charging.chargeLevel = 0
+            charging.ammoConsumed = 0
+            charging.lastAmmoTime = 0
+            mouse.leftButton = false
+        }
+    })
+
+    addEventListener('keydown', e => {
+        if (e.repeat) return
+
+        // Handle Escape key to exit pointer lock
+        if (e.key === 'Escape') {
+            if (document.pointerLockElement === cvs) {
+                document.exitPointerLock()
+            }
+            return
+        }
+
+        if (e.key === ' ') {
             key.space = true
             key[' '] = true
         }
@@ -75,14 +133,6 @@ function initializeInput() {
 
     addEventListener('keyup', e => {
         if (e.key === ' ') {
-            if (charging.active && hero.health && gameState === 'playing') {
-                hero.throw()
-            }
-            charging.active = false
-            charging.startTime = 0
-            charging.chargeLevel = 0
-            charging.ammoConsumed = 0
-            charging.lastAmmoTime = 0
             key.space = false
             key[' '] = false
         }
