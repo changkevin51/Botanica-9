@@ -132,15 +132,12 @@ class World {
                 )
             }
             
-            // Generate flatter terrain for boss fight
             for (let i = 0; i < this.width; i++) {
                 this.array[i] = 3 + random(0, 2, 0) // Flatter ground
                 
-                // Add some junk but less than normal
                 if (i % 5 === 0) append_junk(i)
             }
             
-            // Spawn boss at a good position
             const bossX = 8 // Place boss closer to the player start position
             const bossHeight = 0.8
             const groundHeight = this.array[Math.floor(bossX)]
@@ -150,12 +147,14 @@ class World {
             console.log(`Boss ground height at position ${bossX}: ${groundHeight}`)
             
             this.enemies.push(
-                new Boss(bossX, bossY, 0.8, 0.8) // Slightly smaller boss to avoid collision issues
+                new Boss(bossX, bossY, 0.8, 0.8) 
             )
         } else {
             // Normal level generation
             const enemy_amount = ~~((this.level_end - this.level * 3) * 0.7)
             let make_enemies = enemy_amount
+            console.log(`DEBUG: Level ${this.level} enemy_amount=${enemy_amount}`)
+            
             const append_junk = x => {
                 this.junk.push(
                     new Junk(
@@ -176,9 +175,18 @@ class World {
                     this.junk_timer = this.junk_timer_start
                 }
                 make_enemies --
+                // Only spawn enemies if not in tutorial mode
+                // Force deactivate tutorial on level 2+ before checking (level 2 = 3rd level user plays)
+                if (tutorial.active && this.level >= 2) {
+                    console.log(`DEBUG: Force deactivating tutorial on level ${this.level}`)
+                    tutorial.completeTutorial()
+                }
+                
                 if (i > 8 && !tutorial.active) {
                     if (make_enemies <= 0) {
+                        console.log(`DEBUG: Creating enemy at i=${i}, level=${this.level}, make_enemies was ${make_enemies}`)
                         if (this.level == this.level_end - 1) {
+                            console.log('DEBUG: Creating 2 enemies (final level)')
                             this.enemies.push(
                                 new Enemy(i, -this.array[i] - .35, .35, .35)
                             )
@@ -186,22 +194,34 @@ class World {
                                 new Enemy(i + .5, -this.array[i] - .35, .35, .35)
                             )
                         }
-                        else
+                        else {
+                            console.log('DEBUG: Creating 1 enemy (normal level)')
                             this.enemies.push(
                                 new Enemy(i, -this.array[i] - .35, .35, .35)
                             )
-                        make_enemies = enemy_amount
+                        }
+                        make_enemies = enemy_amount // Reset counter
+                        console.log(`DEBUG: Reset make_enemies to ${enemy_amount}, total enemies: ${this.enemies.length}`)
                     }
                 }
             }
+            
+            console.log(`DEBUG: Level ${this.level} generation complete. Total enemies: ${this.enemies.length}`)
         }
     }
 
     checkIfAllEnemiesAreDead() {
         let all_dead = true
+        let alive_count = 0
         this.enemies.forEach(item => {
-            if (item.health >= 0) all_dead = false
+            if (item.health >= 0) {
+                all_dead = false
+                alive_count++
+            }
         })
+        
+        console.log(`DEBUG: Enemy check - Total: ${this.enemies.length}, Alive: ${alive_count}, All dead: ${all_dead}`)
+        
         if (all_dead) this.change_level = true
     }
 
@@ -244,7 +264,9 @@ class World {
         }
         
         if (hero.health < playerUpgrades.maxHealth && this.heartSpawnCooldown <= 0 && this.hearts.length === 0) {
-            if (Math.random() < 0.0008) {
+            // increased heart spawn rate on boss level
+            const heartSpawnRate = this.level === 4 ? 0.0016 : 0.0008
+            if (Math.random() < heartSpawnRate) {
                 try {
                     const randomX = random(2, this.width - 2, 0)
                     const groundHeight = this.array[Math.floor(randomX)]
@@ -262,7 +284,7 @@ class World {
         }
         
         // generate continuous junk for boss level
-        if (this.level === 4 && this.junk.length < 7) {
+        if (this.level === 4 && this.junk.length < 5) {  // Reduced from 7 to 5 for faster spawning
             const randomX = random(1, this.width - 1, 0)
             const groundHeight = this.array[Math.floor(randomX)]
             this.junk.push(

@@ -30,9 +30,9 @@ heartImage.src = 'heart.png'
 
 const cam = new Camera(0, 0)
 const map = new World()
+const tutorial = new Tutorial()
 const hero = new Player(.25, .3)
 const screen = new Screen()
-const tutorial = new Tutorial()
 
 playerUpgrades.maxHealth = 3
 playerUpgrades.baseDamage = 0.15
@@ -150,7 +150,15 @@ function applyUpgrade(upgradeType) {
             const unownedAbilities = availableAbilities.filter(ability => !playerUpgrades.abilities.includes(ability))
             
             if (unownedAbilities.length > 0) {
-                const randomAbility = unownedAbilities[Math.floor(Math .random() * unownedAbilities.length)]
+                let randomAbility
+                
+                // Force seedbomb during tutorial
+                if (map.level === 1 && tutorial.level === 0 && unownedAbilities.includes('seedbomb')) {
+                    randomAbility = 'seedbomb'
+                } else {
+                    randomAbility = unownedAbilities[Math.floor(Math .random() * unownedAbilities.length)]
+                }
+                
                 playerUpgrades.abilities.push(randomAbility)
                 let abilityTitle = ''
                 let abilityDescription = ''
@@ -473,6 +481,18 @@ function start() {
         ctx.lineWidth = 3
         ctx.strokeText('LEVEL COMPLETE - SELECT UPGRADE', cvs.width / 2, titleSize * 2)
         ctx.fillText('LEVEL COMPLETE - SELECT UPGRADE', cvs.width / 2, titleSize * 2)
+        
+        const labelSize = Math.min(cvs.width, cvs.height) / 30
+        
+        // Check if we're in tutorial mode and force ability selection
+        const tutorialMode = map.level === 1 && tutorial.level === 0 // Coming from level 0 tutorial
+        if (tutorialMode) {
+            upgradeSelection = 2 // Force ability selection
+            ctx.fillStyle = '#ff0'
+            ctx.font = `${labelSize}px "Courier New", monospace`
+            ctx.fillText('Tutorial: You must select the ability upgrade to continue!', cvs.width / 2, titleSize * 3)
+        }
+        
         const iconSize = Math.min(cvs.width, cvs.height) / 10
         const spacing = cvs.width / 4
         const iconY = cvs.height / 2 - iconSize / 2
@@ -482,7 +502,6 @@ function start() {
         drawUpgradeIcon(damageX, iconY, iconSize, 1, upgradeSelection === 1)
         const abilityX = spacing * 3 - iconSize / 2
         drawUpgradeIcon(abilityX, iconY, iconSize, 2, upgradeSelection === 2)
-        const labelSize = Math.min(cvs.width, cvs.height) / 30
         ctx.font = `bold ${labelSize}px "Courier New", monospace`
         ctx.fillStyle = upgradeSelection === 0 ? '#f00' : '#888'
         ctx.strokeStyle = '#000'
@@ -512,17 +531,33 @@ function start() {
         const fadeControlOpacity = (Math.sin(titleAnimationTime * 2) + 1) / 2
         ctx.fillStyle = `rgba(170, 170, 170, ${fadeControlOpacity})`
         ctx.fillText('Use LEFT(A)/RIGHT(D) arrows to select, ENTER to confirm', cvs.width / 2, cvs.height - controlSize * 2)
-        if (key.arrowleft || key.a) {
-            upgradeSelection = Math.max(0, upgradeSelection - 1)
+        
+        if (!tutorialMode) {
+            if (key.arrowleft || key.a) {
+                upgradeSelection = Math.max(0, upgradeSelection - 1)
+                key.arrowleft = false
+                key.a = false
+            }
+            if (key.arrowright || key.d) {
+                upgradeSelection = Math.min(2, upgradeSelection + 1)
+                key.arrowright = false
+                key.d = false
+            }
+        } else {
+            // Clear input keys during tutorial
             key.arrowleft = false
             key.a = false
-        }
-        if (key.arrowright || key.d) {
-            upgradeSelection = Math.min(2, upgradeSelection + 1)
             key.arrowright = false
             key.d = false
         }
+        
         if (key.enter) {
+            if (tutorialMode && upgradeSelection !== 2) {
+                // Force ability selection during tutorial
+                key.enter = false
+                return
+            }
+            
             applyUpgrade(upgradeSelection)
             key.enter = false
             gameState = 'playing'
@@ -534,6 +569,13 @@ function start() {
             map.applyLevelVisualEffects()
             screen.fade.type = 'in'
             screen.fade.a = 255
+            
+            // Start level 1 tutorial if appropriate
+            if (tutorialMode) {
+                tutorial.start(1)
+                gameState = 'tutorial'
+            }
+            
             upgradeSelection = 0
             update()
             return

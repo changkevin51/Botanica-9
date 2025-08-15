@@ -161,10 +161,15 @@ class Player extends Robot {
         this.hit = false
         this.recover_time = 0
         this.health = playerUpgrades.maxHealth
-        this.power = 0
+        this.power = map.level === 4 ? 10 : 0  // Start with 10 energy on boss level
         this.shot_count = 0
         
         this.abilityCounters = {}
+        
+        // Special setup for level 1 tutorial - make seedbomb available at shot 2
+        if (tutorial.active && tutorial.level === 1) {
+            this.abilityCounters = { seedbomb: 2 }
+        }
         
         // Skills tracking
         this.jumpCount = 0  // Track number of jumps used (0 = can jump, 1 = used ground jump, 2 = used double jump)
@@ -191,7 +196,15 @@ class Player extends Robot {
     }
 
     throw() {
+        // Check if tutorial is blocking shooting
+        if (tutorial.shouldBlockShooting()) {
+            return
+        }
+        
         this.shot_count++
+        
+        // Notify tutorial of shot fired
+        tutorial.onShotFired()
         
         // calculate charge multiplier (1x to 2x based on charge level)
         const chargeMultiplier = 1 + charging.chargeLevel
@@ -277,6 +290,9 @@ class Player extends Robot {
                 })
             )
         } else if (usedAbility === 'seedbomb') {
+            // Notify tutorial of seed bomb usage
+            tutorial.onSeedBombUsed()
+            
             map.used_power.push(
                 new SeedBomb({
                     ...seedConfig,
