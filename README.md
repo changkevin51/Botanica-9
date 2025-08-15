@@ -14,7 +14,7 @@ In Botanica-9, you play as a robot on a mission to protect your home. You'll nav
 The controls are straightforward:
 
 *   **Move:** A/D or Left/Right Arrow keys
-*   **Jump:** W, Up Arrow key, or Spacebar
+  *   **Jump:** W, Up Arrow key, or Spacebar
 *   **Shoot/Throw:** Left Mouse Button (hold to charge)
 *   **Aim:** Mouse movement
 *   **Alternative Throw:** X key

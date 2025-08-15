@@ -14,7 +14,9 @@ const key = {
     space: false,
     ' ': false,
     enter: false,
-    shift: false
+    shift: false,
+    f: false,
+    F: false
 }
 
 const mouse = {
@@ -75,7 +77,7 @@ function initializeInput() {
 
     addEventListener('mousedown', e => {
         if (e.button === 0) { // Left mouse button
-            if (!charging.active && hero.health && ~~hero.power && gameState === 'playing') {
+            if (!charging.active && hero.health && ~~hero.power && (gameState === 'playing' || gameState === 'tutorial')) {
                 charging.active = true
                 charging.startTime = Date.now()
                 charging.ammoConsumed = 0
@@ -87,7 +89,7 @@ function initializeInput() {
 
     addEventListener('mouseup', e => {
         if (e.button === 0) { // Left mouse button
-            if (charging.active && hero.health && gameState === 'playing') {
+            if (charging.active && hero.health && (gameState === 'playing' || gameState === 'tutorial')) {
                 hero.throw()
             }
             charging.active = false
@@ -126,9 +128,9 @@ function initializeInput() {
         if (key[e.key.toLowerCase()] != undefined)
             key[e.key.toLowerCase()] = true
 
-        if (e.key == 'x' && hero.health && ~~hero.power && gameState === 'playing') hero.throw()
+        if (e.key == 'x' && hero.health && ~~hero.power && (gameState === 'playing' || gameState === 'tutorial')) hero.throw()
 
-        if (e.key === 'Shift' && hero.health && gameState === 'playing') hero.dash()
+        if (e.key === 'Shift' && hero.health && (gameState === 'playing' || gameState === 'tutorial')) hero.dash()
     })
 
     addEventListener('keyup', e => {

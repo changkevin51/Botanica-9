@@ -176,7 +176,7 @@ class World {
                     this.junk_timer = this.junk_timer_start
                 }
                 make_enemies --
-                if (i > 8) {
+                if (i > 8 && !tutorial.active) {
                     if (make_enemies <= 0) {
                         if (this.level == this.level_end - 1) {
                             this.enemies.push(
@@ -296,9 +296,9 @@ class World {
             item.update()
         })
         if (this.change_level) this.changeLevel()
-        else if (gameState === 'playing') screen.fade.type = 'in'
+        else if (gameState === 'playing' || gameState === 'tutorial') screen.fade.type = 'in'
         if (hero.health <= 0) screen.fade.type = 'over'
-        if (this.level >= this.level_end && gameState === 'playing' && !this.change_level) {
+        if (this.level >= this.level_end && (gameState === 'playing' || gameState === 'tutorial') && !this.change_level) {
             screen.fade.type = 'win'
         }
         if (gameState === 'upgrade' && game === false) {

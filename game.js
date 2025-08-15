@@ -32,6 +32,7 @@ const cam = new Camera(0, 0)
 const map = new World()
 const hero = new Player(.25, .3)
 const screen = new Screen()
+const tutorial = new Tutorial()
 
 playerUpgrades.maxHealth = 3
 playerUpgrades.baseDamage = 0.15
@@ -261,11 +262,13 @@ function update() {
     scale = cvs.width / cam.zoom
 
     updateCharging()
+    tutorial.update()
 
     screen.background()
     cam.update()
     map.update()
     screen.foreground()
+    tutorial.draw()
 
     screen.fadeOut()
     screen.fadeIn()
@@ -306,6 +309,7 @@ function restart() {
 
     hero.reset()
     screen.set()
+    tutorial.active = false
     gameState = 'title'
     game = false
     titleAnimationTime = 0
@@ -446,6 +450,12 @@ function start() {
             game = true
             screen.fade.type = 'in'
             screen.fade.a = 255
+            
+            if (map.level === 0) {
+                tutorial.start()
+                gameState = 'tutorial'
+            }
+            
             update()
         } else {
             requestAnimationFrame(start)

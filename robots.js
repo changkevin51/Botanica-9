@@ -835,7 +835,7 @@ class Enemy extends Robot {
         }
 
         // control
-        if (!this.land_on_side) {
+        if (!this.land_on_side && !tutorial.shouldBlockEnemyMovement()) {
             this.move_time --
             if (this.move_time < 0) {
                 const dir = random(1, 3)
@@ -863,25 +863,46 @@ class Enemy extends Robot {
         map.used_power.forEach(item => {
             if (collide(this, item)) {
                 if (this.health > 0) {
-                    // Use the item's damage if it exists, otherwise fall back to default seed damage
-                    const itemDamage = (item.damage !== undefined) ? item.damage : this.seed_health_loss
+                    let canTakeDamage = true
                     
-                    if (item.constructor.name === 'ExplosiveSeed') {
-                        this.health -= itemDamage  // ExplosiveSeed already has 3x damage multiplier built in
-                        // Create explosion animation
-                        map.explosions.push(new Explosion(this.x + this.width/2, this.y + this.height/2))
-                        const knockbackForce = 0.3 
-                        const direction = item.speed_x > 0 ? 1 : -1
-                        this.speed_x = direction * knockbackForce
-                        this.speed_y = -knockbackForce * 1.2  // Strong upward knockback
-                        this.jump(0.25)  
-                        this.in_air = true  
+                    if (tutorial.shouldBlockEnemyDamage()) {
+                        canTakeDamage = false
                     }
-                    else if (item.constructor.name === 'HomingSeed') {
-                        this.health -= itemDamage
-                        item.createHitEffect(this.x + this.width/2, this.y + this.height/2)
-                    } else {
-                        this.health -= itemDamage
+                    
+                    if (tutorial.shouldRequireChargedShots() && (item.chargeLevel === undefined || item.chargeLevel < 1)) {
+                        canTakeDamage = false
+                    }
+                    
+                    if (canTakeDamage) {
+                        // Use the item's damage if it exists, otherwise fall back to default seed damage
+                        const itemDamage = (item.damage !== undefined) ? item.damage : this.seed_health_loss
+                        
+                        const initialHealth = this.health
+                        
+                        if (item.constructor.name === 'ExplosiveSeed') {
+                            this.health -= itemDamage  // ExplosiveSeed already has 3x damage multiplier built in
+                            // Create explosion animation
+                            map.explosions.push(new Explosion(this.x + this.width/2, this.y + this.height/2))
+                            const knockbackForce = 0.3 
+                            const direction = item.speed_x > 0 ? 1 : -1
+                            this.speed_x = direction * knockbackForce
+                            this.speed_y = -knockbackForce * 1.2  // Strong upward knockback
+                            this.jump(0.25)  
+                            this.in_air = true  
+                        }
+                        else if (item.constructor.name === 'HomingSeed') {
+                            this.health -= itemDamage
+                            item.createHitEffect(this.x + this.width/2, this.y + this.height/2)
+                        } else {
+                            this.health -= itemDamage
+                        }
+                        
+                        // Notify tutorial if enemy took damage
+                        if (tutorial.active && this.health < initialHealth && this === tutorial.tutorialEnemy) {
+                            if (tutorial.step === 3) {
+                                tutorial.markCompleted('hitEnemyWithRegularShot')
+                            }
+                        }
                     }
                 }
 
