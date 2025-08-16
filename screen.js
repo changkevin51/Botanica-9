@@ -127,8 +127,18 @@ class Screen {
                 nextAbilityText = `${nextAbilityInfo.shotsUntilNext} to ${nextAbilityInfo.abilityName}`
             }
             ctx.fillText(nextAbilityText, cvs.width - 5, size * 2)
-            ctx.textAlign = 'left'
         }
+        
+        if (playerUpgrades.skills.dash && hero.dashCooldown > 0) {
+            ctx.textAlign = 'right'
+            const totalMs = Math.ceil((hero.dashCooldown / 60) * 1000)
+            const seconds = Math.floor(totalMs / 1000)
+            const milliseconds = totalMs % 1000
+            const dashCooldownText = `Dash: ${seconds}.${milliseconds.toString().padStart(3, '0')}s`
+            ctx.fillText(dashCooldownText, cvs.width - 5, size * 3)
+        }
+        
+        ctx.textAlign = 'left'
         
         this.numbers.forEach(item => {
             item.update()

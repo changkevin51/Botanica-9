@@ -3,7 +3,7 @@ class World {
         this.set()
         
         // TESTING: (0-9, where 4 is boss level)
-        const TEST_LEVEL = 0  
+        const TEST_LEVEL = 0
         
         this.level = TEST_LEVEL
         this.level_end = 10
